@@ -44,13 +44,14 @@ def generateGraphHypercube(dims, N_sensors, dist_prob):
     #Do not completely understand this part
     my_eigs, _ = np.linalg.eig(np.diag(np.sum(A, axis = 0)) - A)
     my_eigs = np.sort(my_eigs)
-    while abs(my_eigs[1]) < 1e-8:
+    while abs(my_eigs[1]) < 1e-1:
         row = random.randint(0, N_sensors - 1)
         col = random.randint(0, N_sensors - 1)
         A[row][col] = 1
         A[col][row] = 1
         my_eigs, _ = np.linalg.eig(np.diag(np.sum(A, axis = 0)) - A)
         my_eigs = np.sort(my_eigs)
+        print(my_eigs)
     
     return A, locs
 

@@ -1,5 +1,6 @@
 import numpy as np
 from generateGraphHypercube import generateGraphHypercube
+from gaussianDistribution import generate_samples
 import math
 
 import matplotlib.pyplot as plt
@@ -29,6 +30,7 @@ def common_rows(matrix, ind):
     return occur
 
 
+
 my_space = Space()
 N_agents = 7
 N_samples = 4500
@@ -37,13 +39,13 @@ P_link = .02
 axis_length = 100
 
 my_space.ang_meas_sigma = 5 * math.pi/180
-my_space.dim = 2
+my_space.dim = 3
 
 my_space.size_box = axis_length * np.ones((my_space.dim,1))
 my_space.border = 10
 
 
-target_loc = np.random.rand(my_space.dim, 1) * (my_space.size_box - 2*my_space.border) + my_space.border
+target_loc = (np.random.rand(my_space.dim, 1) * (my_space.size_box - 2*my_space.border) + my_space.border).reshape((my_space.dim, ))
 
 A, sens = generateGraphHypercube(my_space.dim, N_agents, 0.2)
 
@@ -94,4 +96,7 @@ plt.title("Sensor network")
 plt.ylabel("Distance (m)")
 plt.xlabel("Distance (m)")
 
-plt.show()                    
+plt.show()
+
+true_sample, covariances = generate_samples(my_space.dim, N_samples, N_agents, target_loc, sens)
+

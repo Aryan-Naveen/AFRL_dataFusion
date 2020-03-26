@@ -73,19 +73,20 @@ neighbors = np.array(neighbors)
 fig = my_space.get_figure()
 ax= my_space.get_axes()
 
+print(A)
 for i in range(1, N_agents):
-    if D[i] >= 0:
-        for j in range(1, i):
-            if A[i][j] == 1:
-                if my_space.dim > 2:
-                    X = [sens[0][i], sens[0][j]]
-                    Y = [sens[1][i], sens[1][j]]
-                    Z = [sens[2][i], sens[2][j]]
-                    ax.plot(X, Y, Z)
-                else:
-                    X = [sens[0][i], sens[0][j]]
-                    Y = [sens[1][i], sens[1][j]]
-                    ax.plot(X, Y)
+    for j in range(i):
+        if A[i][j] == 1:
+            if my_space.dim > 2:
+                X = [sens[0][i], sens[0][j]]
+                Y = [sens[1][i], sens[1][j]]
+                Z = [sens[2][i], sens[2][j]]
+                ax.plot(X, Y, Z)
+            else:
+                X = [sens[0][i], sens[0][j]]
+                Y = [sens[1][i], sens[1][j]]
+                ax.plot(X, Y)
+
 
 if my_space.dim >= 3:
     ax.scatter3D(target_loc[0], target_loc[1], target_loc[2])

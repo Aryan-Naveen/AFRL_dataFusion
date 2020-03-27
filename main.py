@@ -1,7 +1,11 @@
 import numpy as np
 from generateGraphHypercube import generateGraphHypercube
-from gaussianDistribution import generate_samples
+from gaussianDistribution import sampleMeasuredSensorFromTrue
+from centralizedFusion import centralizedAlgorithm
+from KL_divergence import compute_KL
 import math
+import random
+from scipy.stats import multivariate_normal
 
 import matplotlib.pyplot as plt
 
@@ -21,6 +25,10 @@ class Space():
         else:
             return plt.axes()
 
+    def get_3D_axes(self):
+        return plt.axes(projection='3d')
+
+
 
 def common_rows(matrix, ind):
     occur = []
@@ -38,14 +46,23 @@ N_max_gmms = 15
 P_link = .02
 axis_length = 100
 
+#Used to plot pdf functions
+
 my_space.ang_meas_sigma = 5 * math.pi/180
-my_space.dim = 3
+my_space.dim = 2
 
 my_space.size_box = axis_length * np.ones((my_space.dim,1))
 my_space.border = 10
 
 
 target_loc = (np.random.rand(my_space.dim, 1) * (my_space.size_box - 2*my_space.border) + my_space.border).reshape((my_space.dim, ))
+P_reference = multivariate_normal(target_loc)
+
+x, y = np.mgrid[target_loc[0]-5:target_loc[0]+5:.1, target_loc[1]-5:target_loc[1]+5:.1]
+pos = np.empty(x.shape + (2, ))
+pos[:, :, 0] = x
+pos[:, :, 1] = y
+
 
 A, sens = generateGraphHypercube(my_space.dim, N_agents, 0.2)
 
@@ -73,7 +90,6 @@ neighbors = np.array(neighbors)
 fig = my_space.get_figure()
 ax= my_space.get_axes()
 
-print(A)
 for i in range(1, N_agents):
     for j in range(i):
         if A[i][j] == 1:
@@ -99,5 +115,19 @@ plt.xlabel("Distance (m)")
 
 plt.show()
 
-true_sample, covariances = generate_samples(my_space.dim, N_samples, N_agents, target_loc, sens)
+sensor_mus, sensor_covs = sampleMeasuredSensorFromTrue(my_space.dim, N_agents, target_loc)
 
+#Centralized Algorithm
+fig = my_space.get_figure()
+ax = my_space.get_3D_axes()
+
+fused_cov, fused_mu = centralizedAlgorithm(sensor_covs, sensor_mus)
+
+P_fused_central = multivariate_normal(fused_mu, fused_cov)
+
+plt.contourf(x, y, P_fused_central.pdf(pos))
+plt.show()
+
+x = np.linspace(target_loc[0]-5, target_loc[0]+5,num=100)
+y = np.linspace(target_loc[1]-5, target_loc[1]+5,num=100)
+print("KL Divergence: " + str(compute_KL(P_reference, P_fused_central, x, y)))

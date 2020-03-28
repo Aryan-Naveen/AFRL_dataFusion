@@ -1,7 +1,12 @@
 import numpy as np
 from generateGraphHypercube import generateGraphHypercube
-from gaussianDistribution import generate_samples
+from gaussianDistribution import sampleMeasuredSensorFromTrue
+from centralizedFusion import centralizedAlgorithm
+from decentralizedFusion import covarianceIntersection
+from KL_divergence import compute_KL
 import math
+import random
+from scipy.stats import multivariate_normal
 
 import matplotlib.pyplot as plt
 
@@ -21,6 +26,10 @@ class Space():
         else:
             return plt.axes()
 
+    def get_3D_axes(self):
+        return plt.axes(projection='3d')
+
+
 
 def common_rows(matrix, ind):
     occur = []
@@ -37,15 +46,33 @@ N_samples = 4500
 N_max_gmms = 15
 P_link = .02
 axis_length = 100
+KL_inputs = []
+N_time_steps = 100
+
+#Used to plot pdf functions
 
 my_space.ang_meas_sigma = 5 * math.pi/180
-my_space.dim = 3
+my_space.dim = 2
 
 my_space.size_box = axis_length * np.ones((my_space.dim,1))
 my_space.border = 10
 
 
 target_loc = (np.random.rand(my_space.dim, 1) * (my_space.size_box - 2*my_space.border) + my_space.border).reshape((my_space.dim, ))
+
+for val in target_loc:
+    #For computation time 
+    if(my_space.dim < 3):
+        KL_inputs.append(np.linspace(val-5, val+5,num=50))
+    else:
+        KL_inputs.append(np.linspace(val-2, val+2,num=10))
+KL_inputs = np.array(KL_inputs)
+
+x, y = np.mgrid[target_loc[0]-5:target_loc[0]+5:.1, target_loc[1]-5:target_loc[1]+5:.1]
+pos = np.empty(x.shape + (2, ))
+pos[:, :, 0] = x
+pos[:, :, 1] = y
+
 
 A, sens = generateGraphHypercube(my_space.dim, N_agents, 0.2)
 
@@ -65,15 +92,13 @@ print("Diameter of the graph is: " + str(dist))
 
 D = np.sum(A, axis = 0)
 max_deg = max(D)
-neighbors = [[] for i in range(N_agents)]
-for i in range(len(neighbors)):
+neighbors = {}
+for i in range(N_agents):
     neighbors[i] = np.nonzero(A[i])
-neighbors = np.array(neighbors)
 
 fig = my_space.get_figure()
 ax= my_space.get_axes()
 
-print(A)
 for i in range(1, N_agents):
     for j in range(i):
         if A[i][j] == 1:
@@ -99,5 +124,20 @@ plt.xlabel("Distance (m)")
 
 plt.show()
 
-true_sample, covariances = generate_samples(my_space.dim, N_samples, N_agents, target_loc, sens)
+sensor_mus, sensor_covs = sampleMeasuredSensorFromTrue(my_space.dim, N_agents, target_loc)
 
+#Centralized Algorithm
+fused_cov, fused_mu = centralizedAlgorithm(sensor_covs, sensor_mus)
+
+P_centralized = multivariate_normal(fused_mu, fused_cov)
+
+#CI Decentralized Fusion
+
+sensor_mus, sensor_covs, KL_div = covarianceIntersection(sensor_mus, sensor_covs, N_time_steps, neighbors, N_agents, KL_inputs, P_centralized)
+ax = plt.axes()
+X_axis = [i for i in range(1, N_time_steps + 1)]
+for i in range(N_agents):
+    kl = KL_div[i]
+    ax.plot(X_axis, kl)
+
+plt.show()

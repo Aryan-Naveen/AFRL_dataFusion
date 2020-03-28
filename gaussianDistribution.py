@@ -2,32 +2,17 @@ import numpy as np
 from utils import toTuple
 import matplotlib.pyplot as plt
 
-def generate_samples(dims, num_samples, num_sensors, target_loc, sens):
-    true_samples = np.ndarray(shape=(num_sensors, num_samples, dims))
+def sampleMeasuredSensorFromTrue(dims, num_sensors, target_loc):
+    sensor_mus = []
     covs = []
-    fig = plt.figure()
-    if(dims >= 3):
-        ax= plt.axes(projection='3d')
-    else:
-        ax = plt.axes()
-
+    mu = toTuple(target_loc)
     for i in range(num_sensors):
-        sensor_loc = sens[:, i]
-        mu = toTuple(sensor_loc - target_loc)
-        S = np.tril(np.random.rand(3, 3))
+        S = np.tril(np.random.rand(dims, dims))
         cov = S*S.T
         covs.append(cov)
-        true_samples[i] = np.random.multivariate_normal(mu, cov, num_samples)
-        print("-----------------")
-        if(dims >= 3):
-            ax.scatter3D(true_samples[i, :, 0], true_samples[i,:,1] , true_samples[i, :, 2])
-            ax.scatter3D(mu[0], mu[1], mu[2])
-        else:    
-            ax.scatter(true_samples[i][0], true_samples[i][1])
-            ax.scatter(mu[0], mu[1])
-
-    plt.show()
-
+        mu_i = np.random.multivariate_normal(mu, cov, 1)[0]
+        sensor_mus.append(mu_i)
 
     covs = np.array(covs)
-    return true_samples, covs
+    sensor_mus = np.array(sensor_mus)
+    return sensor_mus, covs

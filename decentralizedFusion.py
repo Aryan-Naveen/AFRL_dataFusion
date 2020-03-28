@@ -70,7 +70,7 @@ def covarianceIntersection(sensor_readings, sensor_covariances, N_time_steps, ne
             for k in neighbors[j][0]:
                 mu_s.append(sensor_readings[k])
                 cov_s.append(sensor_covariances[k])
-            sensor_readings[j], sensor_covariances[j] = find_optimal_cov_and_mu(5, mu_s, cov_s)
+            sensor_readings[j], sensor_covariances[j] = find_optimal_cov_and_mu(100, mu_s, cov_s)
             if(calculate_KL):
                 dist = multivariate_normal(sensor_readings[j], sensor_covariances[j])
                 KL_div[j].append(compute_KL(true_dist, dist, KL_inp))

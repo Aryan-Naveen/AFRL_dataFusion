@@ -52,7 +52,7 @@ N_time_steps = 100
 #Used to plot pdf functions
 
 my_space.ang_meas_sigma = 5 * math.pi/180
-my_space.dim = 3
+my_space.dim = 2
 
 my_space.size_box = axis_length * np.ones((my_space.dim,1))
 my_space.border = 10

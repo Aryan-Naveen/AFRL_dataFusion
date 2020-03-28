@@ -47,7 +47,7 @@ N_max_gmms = 15
 P_link = .02
 axis_length = 100
 KL_inputs = []
-N_time_steps = 100
+N_time_steps = 50
 
 #Used to plot pdf functions
 
@@ -63,7 +63,7 @@ target_loc = (np.random.rand(my_space.dim, 1) * (my_space.size_box - 2*my_space.
 for val in target_loc:
     #For computation time 
     if(my_space.dim < 3):
-        KL_inputs.append(np.linspace(val-5, val+5,num=50))
+        KL_inputs.append(np.linspace(val-5, val+5,num=30))
     else:
         KL_inputs.append(np.linspace(val-2, val+2,num=10))
 KL_inputs = np.array(KL_inputs)
@@ -133,11 +133,31 @@ P_centralized = multivariate_normal(fused_mu, fused_cov)
 
 #CI Decentralized Fusion
 
-sensor_mus, sensor_covs, KL_div = covarianceIntersection(sensor_mus, sensor_covs, N_time_steps, neighbors, N_agents, KL_inputs, P_centralized)
+sensor_mus, sensor_covs, KL_div, determinants = covarianceIntersection(sensor_mus, sensor_covs, N_time_steps, neighbors, N_agents, KL_inputs, P_centralized)
 ax = plt.axes()
 X_axis = [i for i in range(1, N_time_steps + 1)]
 for i in range(N_agents):
     kl = KL_div[i]
-    ax.plot(X_axis, kl)
+    ax.plot(X_axis, kl, label="Sensor " + str(i + 1))
 
+plt.ylabel("KL Divergence")
+plt.xlabel("Time Steps")
+plt.title("KL Divergence Progression")
+plt.legend(loc='upper left', borderaxespad=0.)
+plt.grid(b = True)
 plt.show()
+
+ax = plt.axes()
+for i in range(N_agents):
+    deter = determinants[i][1:]
+    ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
+
+plt.ylabel("Determinant of Covariance Matrix")
+plt.xlabel("Time Steps")
+plt.title("Covariance Progression")
+plt.legend(loc='upper left', borderaxespad=0.)
+plt.grid(b = True)
+plt.show()
+
+
+

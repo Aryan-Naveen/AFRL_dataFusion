@@ -2,6 +2,7 @@ import numpy as np
 from generateGraphHypercube import generateGraphHypercube
 from gaussianDistribution import sampleMeasuredSensorFromTrue
 from centralizedFusion import centralizedAlgorithm
+from decentralizedFusion import covarianceIntersection
 from KL_divergence import compute_KL
 import math
 import random
@@ -45,18 +46,27 @@ N_samples = 4500
 N_max_gmms = 15
 P_link = .02
 axis_length = 100
+KL_inputs = []
+N_time_steps = 100
 
 #Used to plot pdf functions
 
 my_space.ang_meas_sigma = 5 * math.pi/180
-my_space.dim = 2
+my_space.dim = 3
 
 my_space.size_box = axis_length * np.ones((my_space.dim,1))
 my_space.border = 10
 
 
 target_loc = (np.random.rand(my_space.dim, 1) * (my_space.size_box - 2*my_space.border) + my_space.border).reshape((my_space.dim, ))
-P_reference = multivariate_normal(target_loc)
+
+for val in target_loc:
+    #For computation time 
+    if(my_space.dim < 3):
+        KL_inputs.append(np.linspace(val-5, val+5,num=50))
+    else:
+        KL_inputs.append(np.linspace(val-2, val+2,num=10))
+KL_inputs = np.array(KL_inputs)
 
 x, y = np.mgrid[target_loc[0]-5:target_loc[0]+5:.1, target_loc[1]-5:target_loc[1]+5:.1]
 pos = np.empty(x.shape + (2, ))
@@ -82,10 +92,9 @@ print("Diameter of the graph is: " + str(dist))
 
 D = np.sum(A, axis = 0)
 max_deg = max(D)
-neighbors = [[] for i in range(N_agents)]
-for i in range(len(neighbors)):
+neighbors = {}
+for i in range(N_agents):
     neighbors[i] = np.nonzero(A[i])
-neighbors = np.array(neighbors)
 
 fig = my_space.get_figure()
 ax= my_space.get_axes()
@@ -118,16 +127,17 @@ plt.show()
 sensor_mus, sensor_covs = sampleMeasuredSensorFromTrue(my_space.dim, N_agents, target_loc)
 
 #Centralized Algorithm
-fig = my_space.get_figure()
-ax = my_space.get_3D_axes()
-
 fused_cov, fused_mu = centralizedAlgorithm(sensor_covs, sensor_mus)
 
-P_fused_central = multivariate_normal(fused_mu, fused_cov)
+P_centralized = multivariate_normal(fused_mu, fused_cov)
 
-plt.contourf(x, y, P_fused_central.pdf(pos))
+#CI Decentralized Fusion
+
+sensor_mus, sensor_covs, KL_div = covarianceIntersection(sensor_mus, sensor_covs, N_time_steps, neighbors, N_agents, KL_inputs, P_centralized)
+ax = plt.axes()
+X_axis = [i for i in range(1, N_time_steps + 1)]
+for i in range(N_agents):
+    kl = KL_div[i]
+    ax.plot(X_axis, kl)
+
 plt.show()
-
-x = np.linspace(target_loc[0]-5, target_loc[0]+5,num=100)
-y = np.linspace(target_loc[1]-5, target_loc[1]+5,num=100)
-print("KL Divergence: " + str(compute_KL(P_reference, P_fused_central, x, y)))

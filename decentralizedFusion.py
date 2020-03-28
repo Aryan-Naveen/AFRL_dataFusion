@@ -14,11 +14,10 @@ def plot_ellipse(covariance, ax, label_t):
     ax.plot(y_el[0], y_el[1], label=label_t)
 
 
-def CI(mu_s, cov_s):
-    w = 1./len(mu_s)
+def CI(mu_s, cov_s, weights):
     total_cov = np.zeros(cov_s[0].shape)
     total_mu = np.zeros(mu_s[0].shape)
-    for mu, cov in zip(mu_s, cov_s):
+    for mu, cov, w in zip(mu_s, cov_s, weights):
         total_mu = np.add(total_mu, w*np.dot(lin.inv(cov), mu))
         total_cov = np.add(total_cov, w*lin.inv(cov))
     
@@ -26,12 +25,17 @@ def CI(mu_s, cov_s):
     mu_comb = np.dot(comb_cov, total_mu)
     return mu_comb, comb_cov
 
-def CI_update(mu_a, cov_a, mu_b, cov_b, w):
-    cov_comb = lin.inv(np.add(w*np.linalg.inv(cov_a), (1-w)*lin.inv(cov_b)))
-    sens_1 = w*np.dot(np.linalg.inv(cov_a), mu_a)
-    sens_2 = (1-w)*np.dot(np.linalg.inv(cov_b), mu_b)
-    mu_comb = np.dot(cov_comb, (np.add(sens_1, sens_2)))
-    return mu_comb, cov_comb
+def find_optimal_cov_and_mu(iter, mu_s, cov_s):
+    N_agents = len(mu_s)
+    default_weights = np.full((N_agents, ), 1./len(mu_s))
+    mu, cov = CI(mu_s, cov_s, default_weights)
+    for i in range(iter):
+        weights = np.random.rand(N_agents, )
+        weights/= sum(weights)
+        pot_mu, pot_cov = CI(mu_s, cov_s, weights)
+        if(lin.det(pot_cov) < lin.det(cov)):
+            mu, cov = pot_mu, pot_cov
+    return mu, cov
 
 def get_weights(sensor_covariances):
     determinats = np.array([np.linalg.det(cov) for cov in sensor_covariances])
@@ -58,7 +62,7 @@ def covarianceIntersection(sensor_readings, sensor_covariances, N_time_steps, ne
             for k in neighbors[j][0]:
                 mu_s.append(sensor_readings[k])
                 cov_s.append(sensor_covariances[k])
-            sensor_readings[j], sensor_covariances[j] = CI(mu_s, cov_s)
+            sensor_readings[j], sensor_covariances[j] = find_optimal_cov_and_mu(5, mu_s, cov_s)
             dist = multivariate_normal(sensor_readings[j], sensor_covariances[j])
             KL_div[j].append(compute_KL(true_dist, dist, KL_inp))
             determinant_progression[j].append(lin.det(sensor_covariances[j]))
@@ -66,5 +70,6 @@ def covarianceIntersection(sensor_readings, sensor_covariances, N_time_steps, ne
     plt.legend(loc='upper left', borderaxespad=0.)
     plt.grid(b = True)
     plt.title("Covariance Ellipses")
+    plt.savefig("Covariance Ellipses.png")
     plt.show()
     return sensor_readings, sensor_covariances, KL_div, determinant_progression

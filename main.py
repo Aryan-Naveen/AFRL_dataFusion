@@ -122,6 +122,7 @@ plt.title("Sensor network")
 plt.ylabel("Distance (m)")
 plt.xlabel("Distance (m)")
 
+plt.savefig("SensorNetwork.png")
 plt.show()
 
 sensor_mus, sensor_covs = sampleMeasuredSensorFromTrue(my_space.dim, N_agents, target_loc)
@@ -145,6 +146,7 @@ plt.xlabel("Time Steps")
 plt.title("KL Divergence Progression")
 plt.legend(loc='upper left', borderaxespad=0.)
 plt.grid(b = True)
+plt.savefig("KL_Divergence.png")
 plt.show()
 
 ax = plt.axes()
@@ -157,6 +159,7 @@ plt.xlabel("Time Steps")
 plt.title("Covariance Progression")
 plt.legend(loc='upper left', borderaxespad=0.)
 plt.grid(b = True)
+plt.savefig("Covariance_Progression.png")
 plt.show()
 
 

@@ -8,7 +8,7 @@ def sampleMeasuredSensorFromTrue(dims, num_sensors, target_loc):
     mu = toTuple(target_loc)
     scalar = 25
     for i in range(num_sensors):
-        S = np.tril(np.random.rand(dims, dims))
+        S = np.tril(np.random.randn(dims, dims))
         cov = np.dot(S, S.T) * scalar
         covs.append(cov)
         mu_i = np.random.multivariate_normal(mu, cov, 1)[0]

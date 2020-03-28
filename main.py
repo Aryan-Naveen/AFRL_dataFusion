@@ -48,7 +48,8 @@ P_link = .02
 axis_length = 100
 KL_inputs = []
 N_time_steps = 50
-
+calculate_KL_guard = False
+calculate_covariance_det = True
 #Used to plot pdf functions
 
 my_space.ang_meas_sigma = 5 * math.pi/180
@@ -134,33 +135,35 @@ P_centralized = multivariate_normal(fused_mu, fused_cov)
 
 #CI Decentralized Fusion
 
-sensor_mus, sensor_covs, KL_div, determinants = covarianceIntersection(sensor_mus, sensor_covs, N_time_steps, neighbors, N_agents, KL_inputs, P_centralized)
-ax = plt.axes()
+sensor_mus, sensor_covs, KL_div, determinants = covarianceIntersection(sensor_mus, sensor_covs, N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
 X_axis = [i for i in range(1, N_time_steps + 1)]
-for i in range(N_agents):
-    kl = KL_div[i]
-    ax.plot(X_axis, kl, label="Sensor " + str(i + 1))
+if(calculate_KL_guard):    
+    ax = plt.axes()
+    for i in range(N_agents):
+        kl = KL_div[i]
+        ax.plot(X_axis, kl, label="Sensor " + str(i + 1))
 
-plt.ylabel("KL Divergence")
-plt.xlabel("Time Steps")
-plt.title("KL Divergence Progression")
-plt.legend(loc='upper left', borderaxespad=0.)
-plt.grid(b = True)
-plt.savefig("KL_Divergence.png")
-plt.show()
+    plt.ylabel("KL Divergence")
+    plt.xlabel("Time Steps")
+    plt.title("KL Divergence Progression")
+    plt.legend(loc='upper left', borderaxespad=0.)
+    plt.grid(b = True)
+    plt.savefig("KL_Divergence.png")
+    plt.show()
 
-ax = plt.axes()
-for i in range(N_agents):
-    deter = determinants[i][1:]
-    ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
+if(calculate_covariance_det):
+    ax = plt.axes()
+    for i in range(N_agents):
+        deter = determinants[i][1:]
+        ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
 
-plt.ylabel("Determinant of Covariance Matrix")
-plt.xlabel("Time Steps")
-plt.title("Covariance Progression")
-plt.legend(loc='upper left', borderaxespad=0.)
-plt.grid(b = True)
-plt.savefig("Covariance_Progression.png")
-plt.show()
+    plt.ylabel("Determinant of Covariance Matrix")
+    plt.xlabel("Time Steps")
+    plt.title("Covariance Progression")
+    plt.legend(loc='upper left', borderaxespad=0.)
+    plt.grid(b = True)
+    plt.savefig("Covariance_Progression.png")
+    plt.show()
 
 
 

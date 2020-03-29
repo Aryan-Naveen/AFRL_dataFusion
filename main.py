@@ -147,7 +147,7 @@ sensor_mus_CI, sensor_covs_CI, KL_div_CI, determinants_CI = covarianceIntersecti
 
 plot_ellipse(sensor_covs_CI[0], ax, "Fused CI")
 
-sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), neighbors, time_steps=1000)
+sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), neighbors, time_steps=1000, KL_inp = KL_inputs, true_dist=P_centralized)
 plot_ellipse(sensor_covs_Ellip[0], ax, "Fused Ellipsoidal")
 
 plt.legend(loc='upper left', borderaxespad=0.)
@@ -185,7 +185,7 @@ if(calculate_KL_guard):
 
 if(calculate_covariance_det):
     ax = plt.axes()
-    X_axis = [i for i in range(1, min(len(determinants_CI[0]) + 1, 50) + 1)]
+    X_axis = [i for i in range(1, min(len(determinants_CI[0]), 50) + 1)]
     for i in range(N_agents):
         deter = determinants_CI[i][:min(len(determinants_CI[i]), 50)]
         ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
@@ -199,7 +199,7 @@ if(calculate_covariance_det):
     plt.show()
 
     ax = plt.axes()
-    X_axis = [i for i in range(1, min(len(determinants_Ellip[0]) + 1, 50) + 1)]
+    X_axis = [i for i in range(1, min(len(determinants_Ellip[0]), 50) + 1)]
     for i in range(N_agents):
         deter = determinants_Ellip[i][:min(len(determinants_Ellip[i]), 50)]
         ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))

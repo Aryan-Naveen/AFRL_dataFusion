@@ -29,7 +29,7 @@ def CI(mu_s, cov_s, weights):
     mu_comb = np.dot(comb_cov, total_mu)
     return mu_comb, comb_cov
 
-def find_optimal_cov_and_mu(iter, mu_s, cov_s):
+def find_optimal_cov_and_mu_random_sampling(iter, mu_s, cov_s, count):
     N_agents = len(mu_s)
     default_weights = np.full((N_agents, ), 1./len(mu_s))
     mu, cov = CI(mu_s, cov_s, default_weights)
@@ -37,9 +37,30 @@ def find_optimal_cov_and_mu(iter, mu_s, cov_s):
         weights = np.random.rand(N_agents, )
         weights/= sum(weights)
         pot_mu, pot_cov = CI(mu_s, cov_s, weights)
-        if(LA.det(pot_cov) < LA.det(cov)):
+        count_used = False
+        if LA.det(pot_cov) < LA.det(cov):
+            count_used = True
             mu, cov = pot_mu, pot_cov
-    return mu, cov
+    if(count_used):
+        count += 1.0
+    return mu, cov, count
+
+def find_optimal_cov_and_mu_analytical(iter, mu_s, cov_s, count):
+    N_agents = len(mu_s)
+    default_weights = np.full((N_agents, ), 1./len(mu_s))
+    mu, cov = CI(mu_s, cov_s, default_weights)
+    det = np.array([LA.det(c) for c in cov_s])
+    weights = det/np.sum(det)
+    weights = max(weights) - weights
+    pot_mu, pot_cov = CI(mu_s, cov_s, weights)
+    count_used = False
+    if LA.det(pot_cov) < LA.det(cov):
+        count_used = True
+        mu, cov = pot_mu, pot_cov
+    if(count_used):
+        count += 1.0
+    return mu, cov, count
+
 
 def get_weights(sensor_covariances):
     determinats = np.array([np.linalg.det(cov) for cov in sensor_covariances])
@@ -50,6 +71,7 @@ def get_weights(sensor_covariances):
     return weights, c
 
 def covarianceIntersection(sensor_readings, sensor_covariances, N_time_steps, neighbors, N_agents, KL_inp, true_dist, calculate_KL=False, calculate_det=True):
+    count = 0.0
     KL_div = {}
     determinant_progression = {}
     for i in range(N_agents):
@@ -63,12 +85,23 @@ def covarianceIntersection(sensor_readings, sensor_covariances, N_time_steps, ne
             for k in neighbors[j][0]:
                 mu_s.append(sensor_readings[k])
                 cov_s.append(sensor_covariances[k])
-            sensor_readings[j], sensor_covariances[j] = find_optimal_cov_and_mu(5, mu_s, cov_s)
+            sensor_readings[j], sensor_covariances[j], count = find_optimal_cov_and_mu_analytical(100, mu_s, cov_s, count)
             if(calculate_KL):
                 dist = multivariate_normal(sensor_readings[j], sensor_covariances[j])
                 KL_div[j].append(compute_KL(true_dist, dist, KL_inp))
             if(calculate_det):
                 determinant_progression[j].append(LA.det(sensor_covariances[j]))
+        converged = True
+        ref_det = round(LA.det(sensor_covariances[0]), 10)
+        for k in range(1, N_agents):
+            if not round(LA.det(sensor_covariances[k]), 10) == ref_det:
+                converged = False
+                break
+        if converged:
+            break
+
+    percent = (count/(N_time_steps*N_agents))*100
+    print("Percent of time alternative weights used: " + str(percent) + " %")
     return sensor_readings, sensor_covariances, KL_div, determinant_progression
 
 def MutualCovariance(cov_i, cov_j):
@@ -109,7 +142,7 @@ def MutualMean(cov_i, cov_j, mut_cov, mu_i, mu_j):
     mat_3 = np.dot(LA.inv(cov_i) - LA.inv(mut_cov) + lamda, mu_j)
     return  np.dot(mat_1, (mat_2 + mat_3)), False
 
-def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_steps=1000, track_KL=False, track_det=True, **kwargs):
+def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_steps=1000, track_KL=False, track_det=True, true_dist=0, KL_inp=[]):
     N_agents = len(sensor_mus)
     edge_list = []
     KL_div = {}
@@ -139,7 +172,7 @@ def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_st
             break
         if(track_KL):
             for j in range(N_agents):
-                dist = multivariate_normal(sensor_readings[j], sensor_covariances[j])
+                dist = multivariate_normal(sensor_mus[j], sensor_covariarances[j])
                 KL_div[j].append(compute_KL(true_dist, dist, KL_inp))
         if(track_det):
             for j in range(N_agents):

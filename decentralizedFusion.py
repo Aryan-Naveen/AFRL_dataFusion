@@ -154,6 +154,7 @@ def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_st
             if not [num, i] in edge_list:
                 edge_list.append([i, num])
     print("Ellipsoidal Intersection...")
+    time = 0
     for t in tqdm(range(time_steps)):
         for edge in edge_list:
             i = edge[0]
@@ -165,10 +166,12 @@ def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_st
             mut_cov = MutualCovariance(sensor_cov, neighbor_cov)
             mut_mu, converged = MutualMean(sensor_cov, neighbor_cov, mut_cov, sensor_mu, neighbor_mu)
             if(converged):
+                time = t
                 break
             sensor_mus[i], sensor_mus[k] = mut_mu, mut_mu
             sensor_covariarances[i], sensor_covariarances[k] = mut_cov, mut_cov
         if(converged):
+            print("Sensors converged after " + str(time) + " time steps...")
             break
         if(track_KL):
             for j in range(N_agents):

@@ -1,12 +1,12 @@
 import numpy as np
-from utils import toTuple
+from tools.utils import toTuple
 import matplotlib.pyplot as plt
 
 def sampleMeasuredSensorFromTrue(dims, num_sensors, target_loc):
     sensor_mus = []
     covs = []
     mu = toTuple(target_loc)
-    scalar = 25
+    scalar = 1
     for i in range(num_sensors):
         S = np.tril(np.random.randn(dims, dims))
         cov = np.dot(S, S.T) * scalar

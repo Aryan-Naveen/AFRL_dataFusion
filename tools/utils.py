@@ -31,6 +31,7 @@ def print_output_table(input_data):
     headers = ["Data Fusion Method", "Final_Cov", "KL div", "Final Mu"]
     output = [headers]
     for line in input_data:
+        line[-1] = np.matrix.round(line[-1], decimals=1)
         output.append(line)
     print(tabulate(output, headers="firstrow"))
 

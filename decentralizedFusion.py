@@ -10,13 +10,7 @@ import matplotlib.pyplot as plt
 import cProfile, pstats, io
 from pstats import SortKey
 from numpy import dot
-
-
-def plot_last_ellipse(covariance, ax, label_t):
-    x_el = np.array([np.sin(np.linspace(0, 2*math.pi, num=63)), np.cos(np.linspace(0, 2*math.pi, num=63))])
-    C = np.linalg.cholesky(covariance)
-    y_el = np.dot(C, x_el)
-    ax.plot(y_el[0], y_el[1], label=label_t, linewidth=3)
+from utils import check_if_singular
 
 def CI(mu_s, cov_s, weights):
     total_cov = np.zeros(cov_s[0].shape)
@@ -62,14 +56,6 @@ def find_optimal_cov_and_mu_analytical(iter, mu_s, cov_s, count):
     return mu, cov, count
 
 
-def get_weights(sensor_covariances):
-    determinats = np.array([np.linalg.det(cov) for cov in sensor_covariances])
-    c = np.copy(determinats)
-    m_det = max(determinats)
-    determinats = np.array([m_det - det for det in determinats])
-    weights = determinats/np.linalg.norm(determinats)
-    return weights, c
-
 def covarianceIntersection(sensor_readings, sensor_covariances, N_time_steps, neighbors, N_agents, KL_inp, true_dist, calculate_KL=False, calculate_det=True):
     count = 0.0
     KL_div = {}
@@ -98,9 +84,11 @@ def covarianceIntersection(sensor_readings, sensor_covariances, N_time_steps, ne
                 converged = False
                 break
         if converged:
+            N_time_steps = i
             break
 
     percent = (count/(N_time_steps*N_agents))*100
+    print("Sensors converged after " + str(i) + " time steps...")
     print("Percent of time alternative weights used: " + str(percent) + " %")
     return sensor_readings, sensor_covariances, KL_div, determinant_progression
 
@@ -108,7 +96,7 @@ def MutualCovariance(cov_i, cov_j):
     _, S_i = LA.eig(cov_i)
     D_i = np.diag(LA.eigvals(cov_i))
     D_i_05 = D_i ** 0.5
-    D_i_neg = np.where(D_i>1e-320, D_i**-0.5, 0)
+    D_i_neg = LA.inv(D_i_05)
     comb = D_i_neg @ LA.inv(S_i) @ cov_j @ S_i @ D_i_neg
     _, S_j = LA.eig(comb)
     D_j = np.diag(LA.eigvals(comb))
@@ -117,30 +105,35 @@ def MutualCovariance(cov_i, cov_j):
     S_j_inv = LA.inv(S_j)
     return S_i @ D_i_05 @ S_j @ D_T @ S_j_inv @ D_i_05 @ S_i_inv
 
-def check_if_singular(M):
-    return LA.det(M) == 0
 
 def MutualMean(cov_i, cov_j, mut_cov, mu_i, mu_j):
-    if(check_if_singular(cov_i)):
-        return [], True
-    if(check_if_singular(cov_j)):
-        return [], True
-    if(check_if_singular(mut_cov)):
-        return [], True
-    H = LA.inv(cov_i) + LA.inv(cov_j) - 2*LA.inv(mut_cov)
+    H = np.subtract(np.add(LA.inv(cov_i), LA.inv(cov_j)), np.multiply(2, LA.inv(mut_cov)))
     lamda = 0
-    if round(LA.det(H), 50) == 0:
-        (w, v) = LA.eigvals(H)
-        w = np.where(w!=0, w, np.inf)
-        lamda = np.amin(np.where(w != 0,w, np.inf))
+    if LA.det(H) == float(0):
+        eig_H, _ = np.linalg.eigh(H)
+        if(len(list(filter(lambda x: x != 0, eig_H))) == 0):
+            eta = 0
+        else:
+            smallest_nonzero_ev = min(list(filter(lambda x: x != 0, eig_H)))
+            eta = 0.0001 * smallest_nonzero_ev 
 
-    inside = LA.inv(cov_i) + LA.inv(cov_j) - 2*LA.inv(mut_cov) +2*lamda
-    if(check_if_singular(inside)):
-        return [], True
-    mat_1 = LA.inv(inside)
-    mat_2 = np.dot(LA.inv(cov_j) - LA.inv(mut_cov) + lamda, mu_i)
-    mat_3 = np.dot(LA.inv(cov_i) - LA.inv(mut_cov) + lamda, mu_j)
-    return  np.dot(mat_1, (mat_2 + mat_3)), False
+    inside = LA.inv(cov_i) + LA.inv(cov_j) - np.multiply(2, LA.inv(mut_cov)) +np.multiply(2*lamda,np.identity(mut_cov.shape[0]))
+    try:
+        mat_1 = LA.inv(inside)
+        mat_2 = np.dot(LA.inv(cov_j) - LA.inv(mut_cov) + lamda, mu_i)
+        mat_3 = np.dot(LA.inv(cov_i) - LA.inv(mut_cov) + lamda, mu_j)
+        # if math.isnan(np.sum(mat_1)) or math.isnan(np.sum(mat_2)) or math.isnan(np.sum(mat_3)):
+        #     raise Exception('nan is in matrix')
+        return  np.dot(mat_1, (mat_2 + mat_3)), False
+    except:
+        return mu_i, True
+
+def EI_fusedMeanCov(mu_i, mu_j, cov_i, cov_j):
+    cov_m = MutualCovariance(cov_i, cov_j)
+    mu_m, _ = MutualMean(cov_i, cov_j, cov_m, mu_i, mu_j)
+    cov_f = LA.inv(LA.inv(cov_i) + LA.inv(cov_j) - LA.inv(cov_m))
+    mu_f = np.dot(cov_f, np.dot(LA.inv(cov_i), mu_i) + np.dot(LA.inv(cov_j), mu_j) - np.dot(LA.inv(cov_m), mu_m))
+    return mu_f, cov_f
 
 def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_steps=1000, track_KL=False, track_det=True, true_dist=0, KL_inp=[]):
     N_agents = len(sensor_mus)
@@ -154,7 +147,7 @@ def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_st
             if not [num, i] in edge_list:
                 edge_list.append([i, num])
     print("Ellipsoidal Intersection...")
-    time = 0
+    time = time_steps
     for t in tqdm(range(time_steps)):
         for edge in edge_list:
             i = edge[0]
@@ -163,16 +156,21 @@ def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_st
             sensor_cov = sensor_covariarances[i]
             neighbor_mu = sensor_mus[k]
             neighbor_cov = sensor_covariarances[k]
-            mut_cov = MutualCovariance(sensor_cov, neighbor_cov)
-            mut_mu, converged = MutualMean(sensor_cov, neighbor_cov, mut_cov, sensor_mu, neighbor_mu)
+            # mut_cov = MutualCovariance(neighbor_cov, sensor_cov)
+            # mut_mu, converged = MutualMean(sensor_cov, neighbor_cov, mut_cov, sensor_mu, neighbor_mu)
+            mut_mu, mut_cov = EI_fusedMeanCov(sensor_mu, neighbor_mu, sensor_cov, neighbor_cov)
+            sensor_mus[i], sensor_mus[k] = mut_mu, mut_mu
+            sensor_covariarances[i], sensor_covariarances[k] = mut_cov, mut_cov
+            converged = True
+            ref_det = round(LA.det(sensor_covariarances[0]), 10)
+            for k in range(1, N_agents):
+                if not round(LA.det(sensor_covariarances[k]), 10) == ref_det:
+                    converged = False
+                    break
             if(converged):
                 time = t
                 break
-            sensor_mus[i], sensor_mus[k] = mut_mu, mut_mu
-            sensor_covariarances[i], sensor_covariarances[k] = mut_cov, mut_cov
-        if(converged):
-            print("Sensors converged after " + str(time) + " time steps...")
-            break
+
         if(track_KL):
             for j in range(N_agents):
                 dist = multivariate_normal(sensor_mus[j], sensor_covariarances[j])
@@ -180,4 +178,5 @@ def ellipsoidalIntersection(sensor_mus, sensor_covariarances, neighbors, time_st
         if(track_det):
             for j in range(N_agents):
                 determinant_progression[j].append(LA.det(sensor_covariarances[j]))
+    print("Sensors converged after " + str(time) + " time steps...")
     return sensor_mus, sensor_covariarances, KL_div, determinant_progression

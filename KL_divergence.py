@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 from tqdm import tqdm
+import math
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -28,8 +29,10 @@ def compute_KL(P, Q, input):
                 q.append(round(Q.pdf([x, y]), 100))
 
 
+    print(max(p))
+    p = np.asarray(p)
+    q = np.asarray(q)
     old_err_state = np.seterr(divide='raise')
     ignored_states = np.seterr(**old_err_state)
-    p = np.array(p)
-    q = np.array(q)
-    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+    output = np.where((p*q)> 1e-100, p * np.log(p / q), 0)
+    return np.sum(output)

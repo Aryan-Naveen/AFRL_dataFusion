@@ -7,7 +7,7 @@ from KL_divergence import compute_KL
 import math
 import random
 from scipy.stats import multivariate_normal
-from utils import plot_ellipse
+from utils import plot_ellipse, print_all_data
 
 import matplotlib.pyplot as plt
 import warnings
@@ -78,19 +78,21 @@ pos[:, :, 0] = x
 pos[:, :, 1] = y
 
 
-A, sens = generateGraphHypercube(my_space.dim, N_agents, 0.2)
+dist = 6
+while(dist > 4):
+    A, sens = generateGraphHypercube(my_space.dim, N_agents, 0.2)
 
-sens *= axis_length
+    sens *= axis_length
 
 
-curr_A_pow = np.copy(A)
-sum_A = np.copy(A)
-dist = 1
+    curr_A_pow = np.copy(A)
+    sum_A = np.copy(A)
+    dist = 1
 
-while np.count_nonzero(sum_A == 0) > 0:
-    curr_A_pow = np.dot(curr_A_pow, A)
-    sum_A += curr_A_pow
-    dist += 1
+    while np.count_nonzero(sum_A == 0) > 0:
+        curr_A_pow = np.dot(curr_A_pow, A)
+        sum_A += curr_A_pow
+        dist += 1
 
 print("Diameter of the graph is: " + str(dist))
 
@@ -137,18 +139,28 @@ for ind, cov in enumerate(sensor_covs):
     plot_ellipse(cov, ax, "Initial " + str(ind + 1))
 
 #Centralized Algorithm
-fused_cov, fused_mu = centralizedAlgorithm(sensor_covs, sensor_mus)
+fused_cov, fused_mu = centralizedAlgorithm(np.copy(sensor_covs), np.copy(sensor_mus))
+plot_ellipse(fused_cov, ax, "Centralized Fusion")
 
 P_centralized = multivariate_normal(fused_mu, fused_cov)
 
 #CI Decentralized Fusion
-
+print(np.linalg.det(sensor_covs[0]))
 sensor_mus_CI, sensor_covs_CI, KL_div_CI, determinants_CI = covarianceIntersection(np.copy(sensor_mus), np.copy(sensor_covs), N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
-
+print(np.linalg.det(sensor_covs[0]))
 plot_ellipse(sensor_covs_CI[0], ax, "Fused CI")
-
 sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), neighbors, time_steps=1000, KL_inp = KL_inputs, true_dist=P_centralized)
 plot_ellipse(sensor_covs_Ellip[0], ax, "Fused Ellipsoidal")
+
+output_data = []
+output_data.append(["Centralized Fusion", np.linalg.det(fused_cov), "NA", fused_mu])
+Q = multivariate_normal(sensor_mus_CI[0], sensor_covs_CI[0])
+output_data.append(["Covariance Intersection", np.linalg.det(sensor_covs_CI[0]), compute_KL(P_centralized, Q, KL_inputs), sensor_mus_CI[0]])
+Q = multivariate_normal(sensor_mus_Ellip[0], sensor_covs_Ellip[0])
+output_data.append(["Ellipsoidal Intersection", np.linalg.det(sensor_covs_Ellip[0]), compute_KL(P_centralized, Q, KL_inputs), sensor_mus_Ellip[0]])
+print_all_data(output_data, sensor_covs)
+
+
 
 plt.legend(loc='upper left', borderaxespad=0.)
 plt.grid(b = True)
@@ -211,9 +223,6 @@ if(calculate_covariance_det):
     plt.grid(b = True)
     plt.savefig("Covariance_Progression_Ellipse.png")
     plt.show()
-
-
-
 
 
 

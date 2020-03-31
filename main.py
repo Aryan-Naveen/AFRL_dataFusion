@@ -151,9 +151,14 @@ sensor_mus_CI, sensor_covs_CI, KL_div_CI, determinants_CI = covarianceIntersecti
 plot_ellipse(sensor_covs_CI[0], ax, "Covariance Intersection", alpha_val=1, color_def='purple')
 
 #Ellipsoidal Intersection Fusion
-sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
-print(sensor_covs_Ellip[0])
-plot_ellipse(sensor_covs_Ellip[0], ax, "Ellipsoidal Intersection", alpha_val=1, color_def='green')
+ellip_worked = True
+try:
+    sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
+    print(sensor_covs_Ellip[0])
+    plot_ellipse(sensor_covs_Ellip[0], ax, "Ellipsoidal Intersection", alpha_val=1, color_def='green')
+except:
+    ellip_worked = False
+    print("Ellipsoidal Convergence Failed")
 
 plt.legend(loc='upper left', borderaxespad=0.)
 plt.grid(b = True)
@@ -166,8 +171,9 @@ output_data = []
 output_data.append(["Centralized Fusion", np.linalg.det(fused_cov), "NA", fused_mu])
 Q = multivariate_normal(sensor_mus_CI[0], sensor_covs_CI[0])
 output_data.append(["Covariance Intersection", np.linalg.det(sensor_covs_CI[0]), compute_KL(P_centralized, Q, KL_inputs), sensor_mus_CI[0]])
-Q = multivariate_normal(sensor_mus_Ellip[0], sensor_covs_Ellip[0])
-output_data.append(["Ellipsoidal Intersection", np.linalg.det(sensor_covs_Ellip[0]), compute_KL(P_centralized, Q, KL_inputs), sensor_mus_Ellip[0]])
+if(ellip_worked):
+    Q = multivariate_normal(sensor_mus_Ellip[0], sensor_covs_Ellip[0])
+    output_data.append(["Ellipsoidal Intersection", np.linalg.det(sensor_covs_Ellip[0]), compute_KL(P_centralized, Q, KL_inputs), sensor_mus_Ellip[0]])
 print_all_data(output_data, sensor_covs)
 
 
@@ -215,5 +221,19 @@ if(calculate_covariance_det):
     plt.savefig("visualizations/Covariance_Progression_CI.png")
     plt.show()
 
+    if(ellip_worked):
+        ax = plt.axes()
+        X_axis = [i for i in range(1, min(len(determinants_Ellip[0]), 50) + 1)]
+        for i in range(N_agents):
+            deter = determinants_Ellip[i][:min(len(determinants_Ellip[i]), 50)]
+            ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
+
+        plt.ylabel("Determinant of Covariance Matrix")
+        plt.xlabel("Time Steps")
+        plt.title("Covariance Progression EI")
+        plt.legend(loc='upper left', borderaxespad=0.)
+        plt.grid(b = True)
+        plt.savefig("visualizations/Covariance_Progression_EI.png")
+        plt.show()
 
 

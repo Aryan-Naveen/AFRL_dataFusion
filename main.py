@@ -1,16 +1,18 @@
-import numpy as np
-from generateGraphHypercube import generateGraphHypercube
-from gaussianDistribution import sampleMeasuredSensorFromTrue
-from centralizedFusion import centralizedAlgorithm
-from decentralizedFusion import covarianceIntersection, ellipsoidalIntersection
-from KL_divergence import compute_KL
-import math
-import random
+from tools.generateGraphHypercube import generateGraphHypercube
+from tools.gaussianDistribution import sampleMeasuredSensorFromTrue
+from fusionAlgorithms.centralizedFusion import centralizedAlgorithm
+from fusionAlgorithms.covarianceIntersection import covarianceIntersection
+from fusionAlgorithms.ellipsoidalIntersection import ellipsoidalIntersection
+from tools.KL_divergence import compute_KL
 from scipy.stats import multivariate_normal
-from utils import plot_ellipse, print_all_data
+from tools.utils import plot_ellipse, print_all_data
 
 import matplotlib.pyplot as plt
 import warnings
+import math
+import random
+import numpy as np
+
 
 warnings.filterwarnings("ignore")
 class Space():
@@ -128,7 +130,7 @@ plt.title("Sensor network")
 plt.ylabel("Distance (m)")
 plt.xlabel("Distance (m)")
 
-plt.savefig("SensorNetwork.png")
+plt.savefig("visualizations/SensorNetwork.png")
 plt.show()
 
 sensor_mus, sensor_covs = sampleMeasuredSensorFromTrue(my_space.dim, N_agents, target_loc)
@@ -140,17 +142,25 @@ for ind, cov in enumerate(sensor_covs):
 
 #Centralized Algorithm
 fused_cov, fused_mu = centralizedAlgorithm(np.copy(sensor_covs), np.copy(sensor_mus))
-plot_ellipse(fused_cov, ax, "Centralized Fusion")
+plot_ellipse(fused_cov, ax, "Centralized Fusion", alpha_val=1, color_def='blue')
 
 P_centralized = multivariate_normal(fused_mu, fused_cov)
 
 #CI Decentralized Fusion
-print(np.linalg.det(sensor_covs[0]))
 sensor_mus_CI, sensor_covs_CI, KL_div_CI, determinants_CI = covarianceIntersection(np.copy(sensor_mus), np.copy(sensor_covs), N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
-print(np.linalg.det(sensor_covs[0]))
-plot_ellipse(sensor_covs_CI[0], ax, "Fused CI")
-sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), neighbors, time_steps=1000, KL_inp = KL_inputs, true_dist=P_centralized)
-plot_ellipse(sensor_covs_Ellip[0], ax, "Fused Ellipsoidal")
+plot_ellipse(sensor_covs_CI[0], ax, "Covariance Intersection", alpha_val=1, color_def='purple')
+
+#Ellipsoidal Intersection Fusion
+sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
+print(sensor_covs_Ellip[0])
+plot_ellipse(sensor_covs_Ellip[0], ax, "Ellipsoidal Intersection", alpha_val=1, color_def='green')
+
+plt.legend(loc='upper left', borderaxespad=0.)
+plt.grid(b = True)
+plt.title("Covariance Ellipses")
+plt.savefig("visualizations/Covariance Ellipses.png")
+plt.show()
+
 
 output_data = []
 output_data.append(["Centralized Fusion", np.linalg.det(fused_cov), "NA", fused_mu])
@@ -162,11 +172,6 @@ print_all_data(output_data, sensor_covs)
 
 
 
-plt.legend(loc='upper left', borderaxespad=0.)
-plt.grid(b = True)
-plt.title("Covariance Ellipses")
-plt.savefig("Covariance Ellipses.png")
-plt.show()
 
 if(calculate_KL_guard):    
     ax = plt.axes()
@@ -192,7 +197,7 @@ if(calculate_KL_guard):
     plt.title("KL Divergence Ellipsoidal Intersection Progression")
     plt.legend(loc='upper left', borderaxespad=0.)
     plt.grid(b = True)
-    plt.savefig("KL_Divergence_Ellipse.png")
+    plt.savefig("visualizations/KL_Divergence_Ellipse.png")
     plt.show()
 
 if(calculate_covariance_det):
@@ -207,21 +212,7 @@ if(calculate_covariance_det):
     plt.title("Covariance Progression CI")
     plt.legend(loc='upper left', borderaxespad=0.)
     plt.grid(b = True)
-    plt.savefig("Covariance_Progression_CI.png")
-    plt.show()
-
-    ax = plt.axes()
-    X_axis = [i for i in range(1, min(len(determinants_Ellip[0]), 50) + 1)]
-    for i in range(N_agents):
-        deter = determinants_Ellip[i][:min(len(determinants_Ellip[i]), 50)]
-        ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
-
-    plt.ylabel("Determinant of Covariance Matrix")
-    plt.xlabel("Time Steps")
-    plt.title("Covariance Progression Ellipsoidal Intersection")
-    plt.legend(loc='upper left', borderaxespad=0.)
-    plt.grid(b = True)
-    plt.savefig("Covariance_Progression_Ellipse.png")
+    plt.savefig("visualizations/Covariance_Progression_CI.png")
     plt.show()
 
 

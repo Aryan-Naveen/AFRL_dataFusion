@@ -1,0 +1,35 @@
+    # print(mu_a)
+    # print(mu_b)
+    # plt.clf()
+    # verify_pd(cov_a)
+    # verify_pd(cov_b)
+    # ax = plt.axes()    
+    # plot_ellipse(cov_a, ax, "A", color_def='orange', center=[0, 0])
+    # plot_ellipse(cov_b, ax, "B", color_def='blue', center=[0, 0])
+    # mu, C_cov1, C_cov = ICI(mu_a, cov_a, mu_b, cov_b, 0.5, 0.5)
+    # C_cov *= 2
+    # # plot_ellipse(C_cov1, ax, "C", center=[0, 0])
+    # plot_ellipse(C_cov, ax, "C", center=[0, 0])
+
+    # plt.legend(loc='upper left', borderaxespad=0.)
+    # plt.grid(b = True)
+    # plt.show()
+    # verify_pd(C_cov)
+    # C_b_c = LA.inv(LA.inv(cov_b) - LA.inv(C_cov))
+    # verify_pd(C_b_c)
+
+    # C_a_c = LA.inv(LA.inv(cov_a) - LA.inv(C_cov))
+    # verify_pd(C_a_c)
+    # K_a = LA.inv(cov_a) @ C_a_c @ LA.inv(C_cov + C_a_c) @ C_a_c @ LA.inv(cov_a)
+    # verify_pd(K_a)
+    # print(K_a)
+    # K_b = LA.inv(cov_b) @ C_b_c @ LA.inv(C_cov + C_b_c) @ C_b_c @ LA.inv(cov_b)
+    # verify_pd(K_b)
+    # print(K_b)
+    # A_mat = K_a
+    # a_vec = -2 * mu_a.T @ K_a
+    # B_mat = K_a - K_b
+    # b_vec =  -2 * (mu_a.T @ K_a - mu_b.T @ K_b)
+    # k = mu_a.T @ K_a @ mu_a - mu_b.T @ K_b @ mu_b
+    # print(solve_QP1QC(A_mat, a_vec, B_mat, b_vec, k, tol=10**-7))
+

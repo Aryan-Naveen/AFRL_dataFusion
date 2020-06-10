@@ -17,5 +17,16 @@ def sampleMeasuredSensorFromTrue(dims, num_sensors, target_loc):
         sensor_mus.append(mu_i)
 
     covs = np.array(covs)
+    for cov in covs:
+        verify_pd(cov)
     sensor_mus = np.array(sensor_mus)
     return sensor_mus, covs
+
+
+def verify_pd(cov):
+    eigen_vals = np.linalg.eig(cov)[0]
+    for val in eigen_vals:
+        if val <= 0:
+            print(eigen_vals)
+            print(cov)
+            raise Exception("Not PD")

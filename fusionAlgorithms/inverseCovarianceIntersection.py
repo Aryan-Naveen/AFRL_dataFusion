@@ -19,21 +19,13 @@ def CI(mu_s, cov_s, weights):
     total_cov = LA.inv(total_cov)
     return total_cov
 
-def ICI(mu_s, cov_s, weights):
-    print(weights)
-    C_ICI = np.zeros(cov_s[0].shape)
-    for cov in cov_s:
-        C_ICI = np.add(C_ICI, LA.inv(cov))
-    a = CI(mu_s, cov_s, weights)
-    C_ICI = LA.inv(np.subtract(C_ICI, a))
-    cov_ICI_s = []
-    for w, cov in zip(weights, cov_s):
-        cov_ICI_s.append(np.dot(C_ICI, LA.inv(cov) - np.multiply(w, a)))
-    
-    mu_ICI = np.zeros(mu_s[0].shape)
-    for cov, mu in zip(cov_ICI_s, mu_s):
-        mu_ICI = np.add(mu_ICI, np.dot(cov, mu))
-    return mu_ICI, C_ICI
+def ICI(mu_a, cov_a, mu_b, cov_b, w_1, w_2):
+    C_cov = w_1*cov_a + w_2*cov_b
+    C_ICI = LA.inv(LA.inv(cov_a) + LA.inv(cov_b) - LA.inv(C_cov))
+    K = C_ICI@(LA.inv(cov_a) - w_1*LA.inv(w_1*cov_a + w_2*cov_b))
+    L = C_ICI@(LA.inv(cov_b) - w_2*LA.inv(w_1*cov_a + w_2*cov_b))
+    x_ICI = K @ mu_a + L @ mu_b
+    return x_ICI, C_ICI, C_cov
 
     
 

@@ -1,6 +1,17 @@
 import numpy as np
 import math
 import numpy.linalg as LA
+from tools.gaussianDistribution import verify_pd
+from fusionAlgorithms.inverseCovarianceIntersection import ICI
+from tools.utils import plot_ellipse
+import matplotlib.pyplot as plt
+from fusionAlgorithms.EllipsoidalKT import EllipsoidalIntersection
+from numpy.random import randn
+import cvxpy as cvx
+from qcqp import *
+from a import solve
+from from_scratch import solve_QPQC
+
 
 def psuedo_invert_diagonal_matrix(M):
     diag_M = np.diag(M)
@@ -140,7 +151,9 @@ def min_QP_unconstrained(M, v, tol):
         soln[moves_down_to_neg_Inf] = BIG
     
     soln.reshape(len(v), 1)
-    value = soln @ M @ soln.T * (v.T @ soln)
+    print(soln)
+    print(v)
+    value = soln.T @ M @ soln + np.cross(v.T, soln.T)
 
     output = {}
     output["zero_directions"] = zero_directions
@@ -204,13 +217,13 @@ def solve_QP1QC(A_mat, a_vec, B_mat, b_vec, k, tol=10^-7, verbose= True):
     Ad = np.diag(A)
 
     def calc_diag_Lagr(x, nu):
-        return np.sum(x**2*np.diag(A)) + np.cross(x, (a + nu*b))
+        return np.sum(x**2*np.diag(A)) + np.cross(x.T, (a + nu*b).T)
     
     def calc_diag_obj(x):
-        return np.sum(x**2 * np.diag(A)) + np.cross(x, a)
+        return np.sum(x**2 * np.diag(A)) + np.cross(x.T, a.T)
     
     def calc_diag_constraint(x):
-        return np.sum(x**2*np.diag(B)) + np.cross(x, b) + k
+        return np.sum(x**2*np.diag(B)) + np.cross(x.T, b.T) + k
     
     def return_on_original_space(x):
         soln = {}
@@ -240,7 +253,7 @@ def solve_QP1QC(A_mat, a_vec, B_mat, b_vec, k, tol=10^-7, verbose= True):
     def test_nu_psd(nu, tol):
         diag_A_nu_B = Ad + nu*Bd
         if(np.any(diag_A_nu_B < -tol)):
-            raise Exception("Possible error in pd")
+            raise Warning("Possible error in pd")
         
         diag_A_nu_B = np.where(diag_A_nu_B<0, 0, diag_A_nu_B)
         mat_A_nu_B = to_diag_mat(diag_A_nu_B)
@@ -350,6 +363,7 @@ def solve_QP1QC(A_mat, a_vec, B_mat, b_vec, k, tol=10^-7, verbose= True):
         raise Exception("Quadratic constraint not active")
 
     for i in range(len(nu_to_check)):
+        print(nu_to_check[i])
         test_nu_check = test_nu(nu_to_check[i], tol)
         if(test_nu_check["type"] == 'optimal'):
             nu_opt = nu_to_check[i]
@@ -408,18 +422,49 @@ def solve_QP1QC(A_mat, a_vec, B_mat, b_vec, k, tol=10^-7, verbose= True):
     x_opt = test_nu(nu_opt, tol)["soln"]
     return return_on_original_space(x_opt)
 
-def performFusionProbablistic(mu_a, cov_a, mu_b, cov_b):
-    
-    C_cov = LA.inv(LA.inv(cov_a) + LA.inv(cov_b))
-    C_a_c = LA.inv(LA.inv(cov_a) - LA.inv(C_cov))
-    C_b_c = LA.inv(LA.inv(cov_b) - LA.inv(C_cov))
-    K_a = LA.inv(cov_a) @ C_a_c @ LA.inv(C_cov + C_a_c) @ C_a_c @ LA.inv(cov_a)
-    print(K_a)
-    K_b = LA.inv(cov_b) @ C_b_c @ LA.inv(C_cov + C_b_c) @ C_b_c @ LA.inv(cov_b)
-    print(K_b)
-    A_mat = K_a
-    a_vec = -2 * mu_a.T @ K_a
+
+def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
+    dims = 2
+
+
+    ei = EllipsoidalIntersection()
+
+    plt.cla()
+    plt.clf()
+    C_c = ei.mutual_covariance(C_a, C_b) + 1e-8*np.identity(2)
+    ax = plt.axes()
+    plot_ellipse(C_c, ax, "Common", color_def="orange")
+    plot_ellipse(C_a, ax, "A")
+    plot_ellipse(C_b, ax, "B")
+    plt.show()
+    C_ac_inv = LA.inv(C_a) - LA.inv(C_c)
+    C_bc_inv = LA.inv(C_b) - LA.inv(C_c)
+
+    ax = plt.axes()
+    plot_ellipse(C_c, ax, "Common", color_def="orange")
+    plot_ellipse(C_a, ax, "A")
+    plot_ellipse(C_b, ax, "B")
+    plot_ellipse(LA.inv(C_a), ax, "A inv", color_def="green")
+    plot_ellipse(LA.inv(C_b), ax, "B inv", color_def="green")
+    plot_ellipse(LA.inv(C_c), ax, "Common inv", color_def="blue")
+    # plot_ellipse(LA.inv(C_ac_inv), ax, "CACINV", color_def="blue")
+    plt.show()
+
+    # print(LA.eig(C_ac_inv))
+    # verify_pd(LA.inv(C_ac_inv))
+    # verify_pd(LA.inv(C_bc_inv))
+
+    K_a = LA.inv(C_a) @ LA.inv(C_ac_inv) @ LA.inv(C_c + LA.inv(C_ac_inv)) @ LA.inv(C_ac_inv) @ LA.inv(C_a)
+    K_b = LA.inv(C_b) @ LA.inv(C_bc_inv) @ LA.inv(C_b + LA.inv(C_bc_inv)) @ LA.inv(C_bc_inv) @ LA.inv(C_b)
+
     B_mat = K_a - K_b
-    b_vec =  -2 * (mu_a.T @ K_a - mu_b.T @ K_b)
-    k = mu_a.T @ K_a @ mu_a - mu_b.T @ K_b @ mu_b
-    print(solve_QP1QC(A_mat, a_vec, B_mat, b_vec, k, tol=10**-7))
+    b_vec = -2*(mu_a.T @ K_a - mu_b.T @ K_b)
+    q = mu_a.T @ K_a @ mu_a - mu_b.T @ K_b @ mu_b
+    solve_QPQC(mu_a, B_mat, b_vec, q)
+
+    B_mat = K_b - K_a
+    b_vec = -2*(mu_b.T @ K_b - mu_a.T @ K_a)
+    q = mu_b.T @ K_b @ mu_b - mu_a.T @ K_a @ mu_a
+    solve_QPQC(mu_b, B_mat, b_vec, q)
+
+    

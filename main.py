@@ -241,4 +241,7 @@ if runFusionAlgorithms == 1:
             plt.show()
 
 
+print(sensor_mus[6])
+print(sensor_mus[5])
+print("============================")
 performFusionProbablistic(sensor_mus[6], sensor_covs[6], sensor_mus[5], sensor_covs[5])

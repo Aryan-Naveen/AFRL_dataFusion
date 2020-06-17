@@ -431,7 +431,7 @@ def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
 
     plt.cla()
     plt.clf()
-    C_c = ei.mutual_covariance(C_a, C_b) + 1e-8*np.identity(2)
+    C_c = ei.mutual_covariance(C_a, C_b) + 1e-1*np.identity(2)
     ax = plt.axes()
     plot_ellipse(C_c, ax, "Common", color_def="orange")
     plot_ellipse(C_a, ax, "A")
@@ -457,14 +457,20 @@ def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
     K_a = LA.inv(C_a) @ LA.inv(C_ac_inv) @ LA.inv(C_c + LA.inv(C_ac_inv)) @ LA.inv(C_ac_inv) @ LA.inv(C_a)
     K_b = LA.inv(C_b) @ LA.inv(C_bc_inv) @ LA.inv(C_b + LA.inv(C_bc_inv)) @ LA.inv(C_bc_inv) @ LA.inv(C_b)
 
-    B_mat = K_a - K_b
-    b_vec = -2*(mu_a.T @ K_a - mu_b.T @ K_b)
-    q = mu_a.T @ K_a @ mu_a - mu_b.T @ K_b @ mu_b
-    solve_QPQC(mu_a, B_mat, b_vec, q)
+    S = np.linalg.cholesky(K_a)
 
     B_mat = K_b - K_a
     b_vec = -2*(mu_b.T @ K_b - mu_a.T @ K_a)
     q = mu_b.T @ K_b @ mu_b - mu_a.T @ K_a @ mu_a
-    solve_QPQC(mu_b, B_mat, b_vec, q)
 
-    
+    x_c = solve_QPQC(mu_b, B_mat, b_vec, q)
+
+
+    print((mu_a-x_c).T @ K_a @ (mu_a - x_c))
+    print((mu_b - x_c).T @ K_b @ (mu_b - x_c)) 
+
+    # print("------------------------")
+    # B_mat = K_a - K_b
+    # b_vec = -2*(mu_a.T @ K_a - mu_b.T @ K_b)
+    # q = mu_a.T @ K_a @ mu_a - mu_b.T @ K_b @ mu_b
+    # solve_QPQC(mu_a, B_mat, b_vec, q)

@@ -7,8 +7,8 @@ from tools.utils import plot_ellipse
 import matplotlib.pyplot as plt
 from fusionAlgorithms.EllipsoidalKT import EllipsoidalIntersection
 from numpy.random import randn
-import cvxpy as cvx
-from qcqp import *
+# import cvxpy as cvx
+# from qcqp import *
 from a import solve
 from from_scratch import solve_QPQC
 
@@ -467,10 +467,10 @@ def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
     print(b_vec)
     print(q)
 
-    x_c = solve_QPQC(mu_a, B_mat, b_vec, q)
+    x_c = solve_QPQC(S @ mu_a, B_mat, b_vec, q)
     print("===================")
     print("RESULTS:")
-    print("X_c " + str(x_c))
+    print("X_c " + str(np.linalg.inv(S) @ x_c))
     print("MAHALONOBIS DIFFERENCE TO A " + str((mu_a-x_c).T @ K_a @ (mu_a - x_c)))
     print("MAHALONOBIS DIFFERENCE TO B " + str((mu_b - x_c).T @ K_b @ (mu_b - x_c))) 
 

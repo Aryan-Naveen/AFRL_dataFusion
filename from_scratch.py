@@ -65,24 +65,26 @@ class solve_QPQC_problem():
         ax = plt.axes()
         ax.plot(nus, ders)
         plt.show()
-        a = np.abs(ders)
+        a = np.abs(vals)
         # print(ders[np.argwhere(a == np.min(a))][0])
         nu = nus[np.argwhere(a == np.min(a))][0][0]
         print("\n\n\n")
         print(nu)
         print("\n\n\n")
+        ax = plt.axes()
+        ax.plot(nus, vals)
+        ax.plot(nu, 0, color='green',  marker='o', linestyle='dashed', linewidth=2, markersize=12)
+        plt.show()
+
+
 
         # print(-0.5*np.linalg.inv(np.identity(2) + nu*np.diag(eig))@(nu*q-2*z))
         return -0.5*np.linalg.inv(np.identity(len(self.eig)) + nu*np.diag(self.eig))@(nu*self.q-2*self.z)
     
 
-def case_2(bounds, eig, q, z, r):
-    for val in bounds:
-        A = 2*(np.identity(2) + val*np.diag(eig))
-        g = 2*z - val*q
-        x_hat = g @ np.linalg.pinv(A)
-        # print(x_hat)
-        # print(x_hat.T @ np.diag(eig) @ x_hat + q.T @ x_hat + r)
+    def case_2(self):
+        e_max = np.max(self.eig)
+        e_min = np.min(self.eig)
 
 
 def determine_nu(delta, z, q, r, Q):

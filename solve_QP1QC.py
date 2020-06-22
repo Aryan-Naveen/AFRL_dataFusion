@@ -468,11 +468,12 @@ def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
     print(q)
 
     x_c = solve_QPQC(S @ mu_a, B_mat, b_vec, q)
+    x_c_a = np.linalg.inv(S) @ x_c
     print("===================")
     print("RESULTS:")
     print("X_c " + str(np.linalg.inv(S) @ x_c))
-    print("MAHALONOBIS DIFFERENCE TO A " + str((mu_a-x_c).T @ K_a @ (mu_a - x_c)))
-    print("MAHALONOBIS DIFFERENCE TO B " + str((mu_b - x_c).T @ K_b @ (mu_b - x_c))) 
+    print("MAHALONOBIS DIFFERENCE TO A " + str((mu_a-x_c_a).T @ K_a @ (mu_a - x_c_a)))
+    print("MAHALONOBIS DIFFERENCE TO B " + str((mu_b - x_c_a).T @ K_b @ (mu_b - x_c_a))) 
 
     # print("------------------------")
     # B_mat = K_a - K_b

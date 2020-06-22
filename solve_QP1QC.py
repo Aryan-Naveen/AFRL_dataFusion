@@ -454,20 +454,25 @@ def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
     # verify_pd(LA.inv(C_ac_inv))
     # verify_pd(LA.inv(C_bc_inv))
 
-    K_a = LA.inv(C_a) @ LA.inv(C_ac_inv) @ LA.inv(C_c + LA.inv(C_ac_inv)) @ LA.inv(C_ac_inv) @ LA.inv(C_a)
-    K_b = LA.inv(C_b) @ LA.inv(C_bc_inv) @ LA.inv(C_b + LA.inv(C_bc_inv)) @ LA.inv(C_bc_inv) @ LA.inv(C_b)
+    K_a = LA.inv(C_a) @ (LA.inv(C_ac_inv)@LA.inv(C_a) - np.identity(C_a.shape[0]))
+    K_b = LA.inv(C_b) @ (LA.inv(C_bc_inv)@LA.inv(C_b) - np.identity(C_b.shape[0]))
 
     S = np.linalg.cholesky(K_a)
 
-    B_mat = K_b - K_a
-    b_vec = -2*(mu_b.T @ K_b - mu_a.T @ K_a)
-    q = mu_b.T @ K_b @ mu_b - mu_a.T @ K_a @ mu_a
+    B_mat = K_a - K_b
+    b_vec = -2*(mu_a.T @ K_a - mu_b.T @ K_b)
+    q = mu_a.T @ K_a @ mu_a - mu_b.T @ K_b @ mu_b
 
-    x_c = solve_QPQC(mu_b, B_mat, b_vec, q)
+    print(B_mat)
+    print(b_vec)
+    print(q)
 
-
-    print((mu_a-x_c).T @ K_a @ (mu_a - x_c))
-    print((mu_b - x_c).T @ K_b @ (mu_b - x_c)) 
+    x_c = solve_QPQC(mu_a, B_mat, b_vec, q)
+    print("===================")
+    print("RESULTS:")
+    print("X_c " + str(x_c))
+    print("MAHALONOBIS DIFFERENCE TO A " + str((mu_a-x_c).T @ K_a @ (mu_a - x_c)))
+    print("MAHALONOBIS DIFFERENCE TO B " + str((mu_b - x_c).T @ K_b @ (mu_b - x_c))) 
 
     # print("------------------------")
     # B_mat = K_a - K_b

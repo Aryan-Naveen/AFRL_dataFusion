@@ -7,9 +7,6 @@ from tools.utils import plot_ellipse
 import matplotlib.pyplot as plt
 from fusionAlgorithms.EllipsoidalKT import EllipsoidalIntersection
 from numpy.random import randn
-# import cvxpy as cvx
-# from qcqp import *
-from a import solve
 from from_scratch import solve_QPQC
 
 

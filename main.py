@@ -7,6 +7,7 @@ from solve_QP1QC import performFusionProbablistic
 from tools.KL_divergence import compute_KL
 from scipy.stats import multivariate_normal
 from tools.utils import plot_ellipse, print_all_data
+from fusionAlgorithms.EllipsoidalKT import EllipsoidalIntersection
 
 import matplotlib.pyplot as plt
 import warnings
@@ -14,6 +15,7 @@ import math
 import random
 import numpy as np
 
+from QCQP_opt.qcqp_solver import qcqp_solver_x_c
 
 warnings.filterwarnings("ignore")
 class Space():
@@ -241,7 +243,12 @@ if runFusionAlgorithms == 1:
             plt.show()
 
 
+
+
 print(sensor_mus[6])
 print(sensor_mus[5])
+
+ei = EllipsoidalIntersection()
+C_c = ei.mutual_covariance(sensor_covs[5], sensor_covs[6]) + 1e-1*np.identity(2)
 print("============================")
-performFusionProbablistic(sensor_mus[6], sensor_covs[6], sensor_mus[5], sensor_covs[5])
+qcqp_solver_x_c(sensor_mus[5], sensor_mus[6], np.copy(sensor_covs[5]), np.copy(sensor_covs[6]), C_c)

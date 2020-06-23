@@ -420,15 +420,13 @@ def solve_QP1QC(A_mat, a_vec, B_mat, b_vec, k, tol=10^-7, verbose= True):
     return return_on_original_space(x_opt)
 
 
-def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
+def performFusionProbablistic(mu_a, C_a, mu_b, C_b, C_c):
     dims = 2
 
 
-    ei = EllipsoidalIntersection()
 
     plt.cla()
     plt.clf()
-    C_c = ei.mutual_covariance(C_a, C_b) + 1e-1*np.identity(2)
     ax = plt.axes()
     plot_ellipse(C_c, ax, "Common", color_def="orange")
     plot_ellipse(C_a, ax, "A")
@@ -450,21 +448,25 @@ def performFusionProbablistic(mu_a, C_a, mu_b, C_b):
     # print(LA.eig(C_ac_inv))
     # verify_pd(LA.inv(C_ac_inv))
     # verify_pd(LA.inv(C_bc_inv))
-
     K_a = LA.inv(C_a) @ (LA.inv(C_ac_inv)@LA.inv(C_a) - np.identity(C_a.shape[0]))
+
     K_b = LA.inv(C_b) @ (LA.inv(C_bc_inv)@LA.inv(C_b) - np.identity(C_b.shape[0]))
 
-    S = np.linalg.cholesky(K_a)
+    S = np.linalg.cholesky(K_a).T
 
-    B_mat = K_a - K_b
-    b_vec = -2*(mu_a.T @ K_a - mu_b.T @ K_b)
+    B_mat = np.linalg.inv(S) @ (K_a - K_b) @ np.linalg.inv(S)
+    b_vec = -2 * np.linalg.inv(S) @ (mu_a.T @ K_a - mu_b.T @ K_b)
     q = mu_a.T @ K_a @ mu_a - mu_b.T @ K_b @ mu_b
+
+    B_tilde = np.linalg.inv(S.T) @ B_mat @ np.linalg.inv(S)
+    b_tilde = (b_vec.T @ np.linalg.inv(S)).T
+
 
     print(B_mat)
     print(b_vec)
     print(q)
 
-    x_c = solve_QPQC(S @ mu_a, B_mat, b_vec, q)
+    x_c = solve_QPQC(S @ mu_a, B_tilde, b_tilde, q)
     x_c_a = np.linalg.inv(S) @ x_c
     print("===================")
     print("RESULTS:")

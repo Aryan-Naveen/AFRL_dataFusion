@@ -85,6 +85,14 @@ class solve_QPQC_problem():
     def case_2(self):
         e_max = np.max(self.eig)
         e_min = np.min(self.eig)
+        pot_nus = []
+        if e_max >0:
+            pot_nus.append(-1/e_max)
+        if e_min < 0:
+            pot_nus.append(-1/e_min)
+        
+        for nu in pot_nus:
+            x_hat = np.linalg.pinv(np.identity(2) + nu*np.diag(self.eig))
 
 
 def determine_nu(delta, z, q, r, Q):
@@ -110,7 +118,7 @@ def determine_nu(delta, z, q, r, Q):
     
 
 def solve_QPQC(z, P, q, r):
-    D, Q = np.linalg.eig(P)
+    D, Q = np.linalg.eigh(P)
     delta_eig = np.diag(D)
 
     print("\n\n\n\n")
@@ -122,10 +130,3 @@ def solve_QPQC(z, P, q, r):
 
     return determine_nu(delta_eig, z_hat, q_hat, r, Q)
 
-if __name__ == "__main__":
-    print("A simple test...")
-    z = np.array([1.,0.])
-    P = np.array([[2,0.],[0.,-1]])
-    q = np.array([1.,0])
-    r = 0
-    solve_QPQC(z,P,q,r)

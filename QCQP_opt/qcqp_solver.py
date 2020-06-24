@@ -12,6 +12,10 @@ def z2p(z):
 
 class QCQP_solver():
     def __init__(self, P, q, r, z):
+        self.ogP = P
+        self.ogq = q
+        self.ogz = z
+        self.ogr = r
         self.P = P
         self.q = q
         self.r = r
@@ -24,6 +28,7 @@ class QCQP_solver():
         self.P = np.linalg.inv(S.T) @ self.P @ np.linalg.inv(S)
         self.q = (self.q.T @ np.linalg.inv(S)).T
         self.z = S @ self.z
+        self.S = S
     
     def perform_eigen_transform(self):
         e_vals, Q = np.linalg.eig(self.P)
@@ -43,7 +48,7 @@ class QCQP_solver():
             print("WARNING:  nu will have to be negative for I+nu \Lambda to be psd. No limits on it")
         bounds[1]= -1/np.min(self.eig)
         bounds[0] = -1/np.max(self.eig)
-        print('bounds before sort',bounds,'and after sort',np.sort(bounds))
+        # print('bounds before sort',bounds,'and after sort',np.sort(bounds))
         self.bounds = np.sort(bounds)
 
     def calculate_value(self, nu):
@@ -60,38 +65,54 @@ class QCQP_solver():
         return -np.sum(np.power(2*self.eig*self.z+self.q, 2)/np.power(2*(1+nu*self.eig), 3))
 
     def get_potential_nus(self):
-        return np.linspace(self.bounds[0]+1E-3, self.bounds[1]-1E-3, abs(int((self.bounds[1]-self.bounds[0])*1024)))    
+        return np.linspace(self.bounds[0]+1E-3, self.bounds[1]-1E-3, abs(int((self.bounds[1]-self.bounds[0])*2048)))    
 
+
+    def binary_search_nu(self):
+        b = np.copy(self.bounds)
+        for i in range(100):
+            nu = (b[0] + b[1])/2
+            val = self.calculate_value(nu)
+            if val > 0:
+                b[0] = nu
+            elif val < 0:
+                b[1] = nu
+            else:
+                break
+        return nu
 
     def find_optimal_nu(self):
-        nus = self.get_potential_nus()
-        vfunc = np.vectorize(self.calculate_value)
-        dfunc = np.vectorize(self.calculate_derivative)
-        
-        vals = vfunc(nus)
-        derivatives = dfunc(nus)
-
-        return nus[np.argwhere(np.abs(vals) == np.min(np.abs(vals)))][0][0]
+        nu = self.binary_search_nu()
+        print("Constraint value in terms of nu: " + str(self.calculate_value(nu)))
+        return nu
 
     def inverse_eigen_transform(self, x):
+        self.P = self.Q @ self.P @ self.Q.T
+        self.z = self.Q @ self.z
+        self.q = self.Q @ self.q
         return self.Q @ x
     
-    def inverse_cholseky(self, K, x):
-        S = np.linalg.cholesky(K).T
-        return np.linalg.inv(S) @ x
+    def inverse_cholseky(self, x):
+        return np.linalg.inv(self.S) @ x
+
+    def calculate_constraint(self, x):
+        return x.T @ self.P @ x + self.q.T @ x + self.r
+
 
     def calculate_x_c_val(self, nu):
-        return -(0.5)*np.linalg.inv(np.identity(self.dims) + nu * self.P) @ (nu*self.q - 2*self.z)
+        x_c = -(0.5)*np.linalg.inv(np.identity(self.dims) + nu * np.diag(self.eig)) @ (nu*self.q - 2*self.z)
+        print("Constraint value in terms of x_c: " + str(self.calculate_constraint(x_c)))
+        return x_c
 
-    def calculate_x_c_case1(self, nu, K):
+    def calculate_x_c_case1(self, nu):
         x_hat = self.calculate_x_c_val(nu)
         tilde_x_c = self.inverse_eigen_transform(x_hat)
-        return self.inverse_cholseky(K, tilde_x_c)
+        return self.inverse_cholseky(tilde_x_c)
 
     def case_2(self, nu):
         return (0.5)*np.linalg.pinv(np.identity(self.dims) + nu*self.P) @ (2*self.z - nu*self.q)
 
-    def calculate_x_case2(self, K):
+    def calculate_x_case2(self):
         if self.bounds[0] < 0:
             print("\nLOWER BOUND NU:")
             x_test_hat = self.case_2(self.bounds[0])
@@ -122,7 +143,6 @@ def calculate_QCQP_Coeff(K_a, K_b, x_a, x_b):
     return P, q, r
 
 def calculate_mahalonobis_difference(x_c, x, K):
-    print(x - x_c)
     return (x-x_c) @ K @ (x - x_c).T
 
 

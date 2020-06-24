@@ -24,7 +24,6 @@ def test_quadratic_programming():
     solver.generate_bounds_for_nu()
     nu = solver.find_optimal_nu()
     x_c = solver.inverse_eigen_transform(solver.calculate_x_c_val(nu))
-    # print(solver.calculate_constraint(x_c))
 
 def test_eigen_val_transform():
     #~~~~~~~~~~~~~~~~~~~~~~~~~INITIALIZATION~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -48,7 +47,7 @@ def test_eigen_val_transform():
     #~~~~~~~~~~~~~~~~~~~~~~~~~INVERSE TRANSFORM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     x = solver.inverse_eigen_transform(x)
     #~~~~~~~~~~~~~~~~~~~~~~~~~ORIGINAL CALCULATIONS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    print("~~~~~~~~~~~~~~~~~~~~~~~~~FINAL CALCULATIONS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~INVERSE CALCULATIONS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print("MAHALANOBIS DIFFERENCE: " + str(calculate_mahalonobis_difference(x, solver.z, solver.P)))
     print("INITIAL CONSTRAINT: " + str(solver.calculate_constraint(x)))
 
@@ -71,6 +70,12 @@ def test_cholseky_transform():
     x = solver.S @ x
     #~~~~~~~~~~~~~~~~~~~~~~~~~FINAL CALCULATIONS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     print("~~~~~~~~~~~~~~~~~~~~~~~~~FINAL CALCULATIONS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("MAHALANOBIS DIFFERENCE: " + str(calculate_mahalonobis_difference(x, solver.z, solver.P)))
+    print("INITIAL CONSTRAINT: " + str(solver.calculate_constraint(x)))
+    #~~~~~~~~~~~~~~~~~~~~~~~~~INVERSE TRANSFORM~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    x = solver.inverse_cholseky(x)
+    #~~~~~~~~~~~~~~~~~~~~~~~~~ORIGINAL CALCULATIONS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~INVERSE CALCULATIONS~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print("MAHALANOBIS DIFFERENCE: " + str(calculate_mahalonobis_difference(x, solver.z, solver.P)))
     print("INITIAL CONSTRAINT: " + str(solver.calculate_constraint(x)))
 

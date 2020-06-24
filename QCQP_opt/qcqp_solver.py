@@ -93,6 +93,9 @@ class QCQP_solver():
         return self.Q @ x
     
     def inverse_cholseky(self, x):
+        self.P = self.S.T @ self.P @ self.S
+        self.q = (self.q.T @ self.S).T
+        self.z = np.linalg.inv(self.S) @ self.z
         return np.linalg.inv(self.S) @ x
 
     def calculate_constraint(self, x):

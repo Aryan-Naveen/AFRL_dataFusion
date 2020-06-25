@@ -15,7 +15,7 @@ import math
 import random
 import numpy as np
 
-from QCQP_opt.qcqp_solver import qcqp_solver_x_c
+from QCQP_opt.qcqp_solver import perform_fusion
 
 warnings.filterwarnings("ignore")
 class Space():
@@ -251,4 +251,4 @@ print(sensor_mus[5])
 ei = EllipsoidalIntersection()
 C_c = ei.mutual_covariance(sensor_covs[5], sensor_covs[6]) + 1e-1*np.identity(2)
 print("============================")
-qcqp_solver_x_c(sensor_mus[5], sensor_mus[6], np.copy(sensor_covs[5]), np.copy(sensor_covs[6]), C_c)
+perform_fusion(sensor_mus[5], sensor_mus[6], np.copy(sensor_covs[5]), np.copy(sensor_covs[6]), C_c)

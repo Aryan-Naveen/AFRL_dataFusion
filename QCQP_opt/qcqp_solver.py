@@ -55,7 +55,7 @@ class QCQP_solver():
         A = self.eig*np.power(nu*self.q-2*self.z, 2)
         B = 4*np.power(1+nu*self.eig, 2)
 
-        C = (self.q@(nu*self.q-2*self.z))
+        C = (self.q*(nu*self.q-2*self.z))
         D = 2*(1+nu*self.eig)
         # print(f'eigs is {self.eig}, q is {self.q}, nu is {nu}, z is {self.z}')
         # print(f'A is {A}, B is {B}, C is {C}, D is {D}, r is {self.r}')
@@ -152,48 +152,51 @@ def calculate_mahalonobis_difference(x_c, x, K):
 def qcqp_solver_x_c(x_a, x_b, C_a, C_b, C_c):
     a = []
     b = []
-    multipliers = np.linspace(1, 2, 11)
-    g = [95] * multipliers.size
+    C_ac_inv = LA.inv(C_a) - LA.inv(C_c)
+    C_bc_inv = LA.inv(C_b) - LA.inv(C_c)
+
+    K_a, K_b = calculate_K(C_a, C_b, C_c)
+    P, q, r = calculate_QCQP_Coeff(K_a, K_b, x_a, x_b)
+
+    solver = QCQP_solver(P, q, r, x_a)
+
+    solver.perform_cholesky_transform(K_a)
+    solver.perform_eigen_transform()
+    solver.generate_bounds_for_nu()
+
+    ################CASE 1#############################
+    nu = solver.find_optimal_nu()
+    x_c = solver.calculate_x_c_case1(nu)
+    a_diff = calculate_mahalonobis_difference(x_c, x_a, K_a)
+    b_diff = calculate_mahalonobis_difference(x_c, x_b, K_b)
+    print("Mahalonobis difference to A: " + str(a_diff))
+    print("Mahalonobis difference to B: " + str(b_diff))
+    return a_diff, b_diff
+
+
+
+
+def perform_fusion(x_a, x_b, C_a, C_b, C_c):
+    qcqp_solver_x_c(x_a, x_b, C_a, C_b, C_c)
+    multipliers = np.linspace(0, 1.1, 11)
+    con_vec = ((x_b - x_a)/np.linalg.norm(x_b - x_a)).reshape(1, 2)
+    R = np.array([[0, -1], [1, 0]])
+    con_vec = (R @ con_vec.T).T
+    con_mat = con_vec.T @ con_vec
+    a_d = []
+    b_d = []
     for m in multipliers:
-        C_ac_inv = LA.inv(C_a) - LA.inv(m*C_c)
-        C_bc_inv = LA.inv(C_b) - LA.inv(m*C_c)
-
-        K_a, K_b = calculate_K(C_a, C_b, m*C_c)
-        P, q, r = calculate_QCQP_Coeff(K_a, K_b, x_a, x_b)
-
-        solver = QCQP_solver(P, q, r, x_a)
-
-        solver.perform_cholesky_transform(K_a)
-        solver.perform_eigen_transform()
-        solver.generate_bounds_for_nu()
-
-        ################CASE 1#############################
-        print("#################MULTIPLIER: " + str(m) + "########################")
-        nu = solver.find_optimal_nu()
-        x_c = solver.calculate_x_c_case1(nu, K_a)
-        a_diff = calculate_mahalonobis_difference(x_c, x_a, K_a)
-        b_diff = calculate_mahalonobis_difference(x_c, x_b, K_b)
-        print("Mahalonobis difference to A: " + str(a_diff))
-        # a.append(z2p(a_diff**0.5)*100)
-        print("Mahalonobis difference to B: " + str(b_diff))
-        # b.append(z2p(b_diff**0.5)*100)
-
-        print("\n")
-
-    # plt.cla()
-    # plt.clf()
-
-    # ax = plt.axes()
-    # ax.plot(multipliers, a)
-    # ax.plot(multipliers, b)
-    # ax.plot(multipliers, g)
-
-    # plt.show()    
+        C_c_diff = C_c + m*con_mat
+        a, b = qcqp_solver_x_c(x_a, x_b, C_a, C_b, C_c_diff)
+        a_d.append(a)
+        b_d.append(b)
+    
+    plt.cla()
+    plt.clf()
+    ax = plt.axes()
+    ax.plot(multipliers, a_d)
+    ax.plot(multipliers, b_d)
+    plt.show()
 
 
-    # ################CASE 2#############################
-    # nu = solver.find_optimal_nu()
-    # x_c = solver.calculate_x_case2(K_a)
-    # print("Mahalonobis difference to A: " + str(calculate_mahalonobis_difference(x_c, x_a, K_a)))
-    # print("Mahalonobis difference to B: " + str(calculate_mahalonobis_difference(x_c, x_b, K_b)))
 

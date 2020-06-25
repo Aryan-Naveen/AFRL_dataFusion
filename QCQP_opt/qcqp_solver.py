@@ -1,14 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg as LA
-from fusionAlgorithms.EllipsoidalKT import EllipsoidalIntersection
-from tools.utils import plot_ellipse
-import scipy.special as scsp
+from scipy.stats import chi2
 
-def z2p(z):
-    """From z-score return p-value."""
-    return 0.5 * (1 + scsp.erf(z / np.sqrt(2)))
 
+def get_critical_value(dimensions, alpha):
+    return chi2.ppf((1 - alpha), df=dimensions)
 
 class QCQP_solver():
     def __init__(self, P, q, r, z):
@@ -184,13 +181,17 @@ def perform_fusion(x_a, x_b, C_a, C_b, C_c):
     c_vec = (R @ con_vec.T).T
     con_mat = con_vec.T @ con_vec
     c_mat = c_vec.T @ c_vec
+    
     a_d_par = []
     b_d_par = []
+
     a_d_perp = []
     b_d_perp = []
+    
     for m in multipliers:
         C_c_diff_par = C_c + m*con_mat
         C_c_diff_perp = C_c + m*c_mat
+
         a, b = qcqp_solver_x_c(x_a, x_b, C_a, C_b, C_c_diff_par)
         a_d_par.append(a)
         b_d_par.append(b)
@@ -199,6 +200,8 @@ def perform_fusion(x_a, x_b, C_a, C_b, C_c):
         a_d_perp.append(a)
         b_d_perp.append(b)
     
+    critical_value = [get_critical_value(c_mat.size, 0.7)]*len(multipliers)
+
     plt.cla()
     plt.clf()
     ax = plt.axes()
@@ -206,6 +209,7 @@ def perform_fusion(x_a, x_b, C_a, C_b, C_c):
     ax.plot(multipliers, b_d_par, label="Parallel B")
     ax.plot(multipliers, a_d_perp, label = "Perpindicular A")
     ax.plot(multipliers, b_d_perp, label = "Perpindicular B")
+    ax.plot(multipliers, critical_value, label="CRITICAL VALUE ALPHA 0.05")
     ax.legend()
     plt.show()
 

@@ -181,21 +181,32 @@ def perform_fusion(x_a, x_b, C_a, C_b, C_c):
     multipliers = np.linspace(0, 1.1, 11)
     con_vec = ((x_b - x_a)/np.linalg.norm(x_b - x_a)).reshape(1, 2)
     R = np.array([[0, -1], [1, 0]])
-    con_vec = (R @ con_vec.T).T
+    c_vec = (R @ con_vec.T).T
     con_mat = con_vec.T @ con_vec
-    a_d = []
-    b_d = []
+    c_mat = c_vec.T @ c_vec
+    a_d_par = []
+    b_d_par = []
+    a_d_perp = []
+    b_d_perp = []
     for m in multipliers:
-        C_c_diff = C_c + m*con_mat
-        a, b = qcqp_solver_x_c(x_a, x_b, C_a, C_b, C_c_diff)
-        a_d.append(a)
-        b_d.append(b)
+        C_c_diff_par = C_c + m*con_mat
+        C_c_diff_perp = C_c + m*c_mat
+        a, b = qcqp_solver_x_c(x_a, x_b, C_a, C_b, C_c_diff_par)
+        a_d_par.append(a)
+        b_d_par.append(b)
+
+        a, b = qcqp_solver_x_c(x_a, x_b, C_a, C_b, C_c_diff_perp)
+        a_d_perp.append(a)
+        b_d_perp.append(b)
     
     plt.cla()
     plt.clf()
     ax = plt.axes()
-    ax.plot(multipliers, a_d)
-    ax.plot(multipliers, b_d)
+    ax.plot(multipliers, a_d_par, label="Parallel A")
+    ax.plot(multipliers, b_d_par, label="Parallel B")
+    ax.plot(multipliers, a_d_perp, label = "Perpindicular A")
+    ax.plot(multipliers, b_d_perp, label = "Perpindicular B")
+    ax.legend()
     plt.show()
 
 

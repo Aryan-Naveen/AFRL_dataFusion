@@ -1,0 +1,18 @@
+================================================
+For dimension 1: 14.22% were above the critical value of 3.841458820694124
+================================================
+For dimension 2: 4.32% were above the critical value of 5.991464547107979
+================================================
+For dimension 3: 7.7% were above the critical value of 7.814727903251179
+================================================
+For dimension 4: 8.24% were above the critical value of 9.487729036781154
+================================================
+For dimension 5: 8.98% were above the critical value of 11.070497693516351
+================================================
+For dimension 6: 10.46% were above the critical value of 12.591587243743977
+================================================
+For dimension 7: 12.08% were above the critical value of 14.067140449340169
+================================================
+For dimension 8: 13.24% were above the critical value of 15.50731305586545
+================================================
+For dimension 9: 15.04% were above the critical value of 16.918977604620448

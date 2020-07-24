@@ -1,0 +1,2 @@
+================================================
+For dimension 2: 0.32% were above the critical value of 5.991464547107979

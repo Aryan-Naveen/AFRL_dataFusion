@@ -432,6 +432,7 @@ def performFusionProbablistic(mu_a, C_a, mu_b, C_b, C_c):
     plot_ellipse(C_a, ax, "A")
     plot_ellipse(C_b, ax, "B")
     plt.show()
+
     C_ac_inv = LA.inv(C_a) - LA.inv(C_c)
     C_bc_inv = LA.inv(C_b) - LA.inv(C_c)
 

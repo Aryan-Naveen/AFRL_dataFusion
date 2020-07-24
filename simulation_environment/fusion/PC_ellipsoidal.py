@@ -193,9 +193,9 @@ def fusion(C_a, C_b, x_a, x_b, true_Cc, true_xc, C_c):
     plt.clf()
     ax = plt.axes()
     plot_ellipse(true_Cc, ax, "true fusion")
-    plot_ellipse(C_a, ax)
-    plot_ellipse(C_b, ax, "initial distribution")
-    plot_ellipse(C_c, ax, "true common info", alpha_val=0.1)
+    # plot_ellipse(C_a, ax)
+    # plot_ellipse(C_b, ax, "initial distribution")
+    # plot_ellipse(C_c, ax, "true common info", alpha_val=0.1)
 
 
     dims = x_a.size
@@ -216,7 +216,7 @@ def fusion(C_a, C_b, x_a, x_b, true_Cc, true_xc, C_c):
     if data.calculate_mahalanobis_distance() > cr_05:
         binary_search(data, z, cr_05)
 
-    plot_ellipse(data.get_C_c(), ax, label_t="C_c PC", alpha_val=0.75, linestyle='dashed', color_def="green")
+    # plot_ellipse(data.get_C_c(), ax, label_t="C_c PC", alpha_val=0.75, linestyle='dashed', color_def="green")
     plot_ellipse(data.calculate_fusion_covariance(), ax, label_t="C_fus PC", alpha_val=1, color_def="green")
 
     data.visualize(dims, "pcei.png")

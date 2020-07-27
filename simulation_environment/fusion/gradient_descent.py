@@ -37,6 +37,25 @@ def get_input_values(data):
     return data.get_x_a(tensor=True), data.get_x_b(tensor=True), data.get_C_a(tensor=True), data.get_C_b(tensor=True), data.get_C_c(tensor=True)
 
 
+# def find_direction(data):
+#     all_zs = []
+#     x_a, x_b, C_a, C_b, C_c = get_input_values(data)
+#     dims = x_a.size()[0]
+#     z = normalize(x_a - x_b).reshape((1, dims))
+#     z.requires_grad = True
+#     continue_o = True
+#     i = 0
+#     count = 0
+#     for i in range(100):
+#         count += 1
+#         g = update(z, C_c, C_a, C_b, x_a, x_b, all_zs)
+#         if len(all_zs) > 1 and all_zs[-2] >= all_zs[-1]:
+#             break
+#         z = normalize(z + g)
+
+#     return z.detach().numpy()
+
+
 def find_direction(data):
     all_zs = []
     x_a, x_b, C_a, C_b, C_c = get_input_values(data)
@@ -49,8 +68,8 @@ def find_direction(data):
     for i in range(100):
         count += 1
         g = update(z, C_c, C_a, C_b, x_a, x_b, all_zs)
-        if len(all_zs) > 1 and all_zs[-2] <= all_zs[-1]:
+        if len(all_zs) > 1 and all_zs[-2] >= all_zs[-1]:
             break
-        z = normalize(z - g)
+        z = normalize(z + g)
 
     return z.detach().numpy()

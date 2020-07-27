@@ -4,7 +4,8 @@ import numpy.linalg as LA
 import torch
 from scipy.stats import chi2
 import numpy as np
-from fusion.gradient_descent import find_direction
+# from fusion.gradient_descent import find_direction
+from fusion.minimize import find_direction
 import matplotlib.pyplot as plt
 import math
 
@@ -138,6 +139,13 @@ class DataStorage():
         x_bc = (C_bc @ (inv(self.C_b) @ self.x_b.T - inv(self.C_c) @ self.x_c.T)).T
         return C_fus @ (LA.inv(C_ac) @ x_ac + LA.inv(C_bc) @ x_bc + LA.inv(self.C_c) @ self.x_c)
 
+    def set_ogCc_and_outer(self, ogC_c, outer):
+        self.ogC_c = ogC_c
+        self.outer = outer
+    
+    def test_mult(self, m):
+        self.set_C_c(self.ogC_c + m*self.outer)
+        return self.calculate_mahalanobis_distance()
 
 def mutual_covariance(cov_a, cov_b):
     D_a, S_a = np.linalg.eigh(cov_a)
@@ -151,19 +159,42 @@ def mutual_covariance(cov_a, cov_b):
 def avg(arr):
     return sum(arr)/len(arr)
 
+
+
 def binary_search(data, z, cr):
     ogC_c = data.get_C_c()
     outer = z.T @ z
-    bounds = 1e-30
-    eta = 1e-2
-    i = 0
-    while(True):
-        i += 1
-        data.set_C_c(ogC_c + bounds*outer)
-        val = data.calculate_mahalanobis_distance()
-        if(val < cr) or (i > 10000):
-            break
-        bounds += eta
+    data.set_ogCc_and_outer(ogC_c, outer)
+    b_0 = 1e-30
+    def find_upper(data, z, cr):
+        b = 1e-30
+        eta = 1000000
+        i = 0
+        while(True):
+            i += 1
+            data.set_C_c(ogC_c + b*outer)
+            val = data.calculate_mahalanobis_distance()
+            if(val < cr) or (i > 10000):
+                break
+            b += eta
+        
+            data.set_C_c(ogC_c)
+
+        return b
+
+    data.set_C_c(ogC_c)
+
+    b_1 = find_upper(data, z, cr)
+    bounds = [b_0, b_1]
+    
+    m_s = np.linspace(b_0, b_1, 1024)
+
+    mah = np.vectorize(data.test_mult)
+
+    print(np.min(np.abs(cr - mah(m_s))))
+
+
+
 
 def mahalanobis_dist_to_true(x_true, data):
     x_c = data.calculate_fusion_mean()
@@ -200,19 +231,28 @@ def fusion(C_a, C_b, x_a, x_b, true_Cc, true_xc, C_c):
 
     dims = x_a.size
     data = DataStorage(C_a, C_b, x_a, x_b)
-    data.set_C_c(mutual_covariance(C_a, C_b))
+    data.set_C_c(mutual_covariance(C_a, C_b) + 1e-20*np.identity(2))
 
     plot_ellipse(data.get_C_c(), ax, label_t="C_c EI", alpha_val=0.75, linestyle='dashed', color_def="blue")
     plot_ellipse(data.calculate_fusion_covariance(), ax, label_t="C_fus EI", alpha_val=1, color_def="blue")
 
 
-    a = MSE(data.calculate_fusion_mean(), true_xc) + MSE(data.calculate_fusion_covariance(), true_Cc)
+    a = MSE(data.calculate_fusion_mean(), true_xc)
 
     det1 = LA.det(data.calculate_fusion_covariance())
     dist1 = mahalanobis_dist_to_true(true_xc, data)
-    z = find_direction(data)
+    z, m = find_direction(data)
 
-    cr_05 = get_critical_value(dims, 0.01)
+    a = [0, z[0][0]]
+    b = [0, z[0][1]]
+    plt.plot(a, b)
+
+    a = [0, m[0][0]]
+    b = [0, m[0][1]]
+    plt.plot(a, b)
+
+
+    cr_05 = get_critical_value(dims, 0.05)
     if data.calculate_mahalanobis_distance() > cr_05:
         binary_search(data, z, cr_05)
 
@@ -220,7 +260,7 @@ def fusion(C_a, C_b, x_a, x_b, true_Cc, true_xc, C_c):
     plot_ellipse(data.calculate_fusion_covariance(), ax, label_t="C_fus PC", alpha_val=1, color_def="green")
 
     data.visualize(dims, "pcei.png")
-    b = MSE(data.calculate_fusion_mean(), true_xc) + MSE(data.calculate_fusion_covariance(), true_Cc)
+    b = MSE(data.calculate_fusion_mean(), true_xc) 
     det2 = LA.det(data.calculate_fusion_covariance())
     dist2 = mahalanobis_dist_to_true(true_xc, data)
     ax.legend()

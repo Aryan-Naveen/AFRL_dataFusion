@@ -14,6 +14,7 @@ import warnings
 import math
 import random
 import numpy as np
+from fusionAlgorithms.a import run_fusion
 
 from QCQP_opt.qcqp_solver import perform_fusion
 
@@ -49,7 +50,7 @@ def common_rows(matrix, ind):
 
 
 my_space = Space()
-N_agents = 7
+N_agents = 4
 N_samples = 4500
 N_max_gmms = 15
 P_link = .02
@@ -138,117 +139,19 @@ plt.show()
 
 sensor_mus, sensor_covs = sampleMeasuredSensorFromTrue(my_space.dim, N_agents, target_loc)
 
-# Plot the initial covariances
+a = 15
+dets = run_fusion(np.copy(sensor_mus), np.copy(sensor_covs), neighbors, N_agents, iter=a)
+
+plt.cla()
+plt.clf()
 ax = plt.axes()
-for ind, cov in enumerate(sensor_covs):
-    plot_ellipse(cov, ax, "Initial " + str(ind + 1))
-
-#Centralized Algorithm
-runFusionAlgorithms = int(input("Should I run fusion(1 -- yes, 0 -- no)"))
-
-if runFusionAlgorithms == 1:
-    fused_cov, fused_mu = centralizedAlgorithm(np.copy(sensor_covs), np.copy(sensor_mus))
-    plot_ellipse(fused_cov, ax, "Centralized Fusion", alpha_val=1, color_def='blue')
-
-    P_centralized = multivariate_normal(fused_mu, fused_cov)
-
-    #CI Decentralized Fusion
-    sensor_mus_CI, sensor_covs_CI, KL_div_CI, determinants_CI = covarianceIntersection(np.copy(sensor_mus), np.copy(sensor_covs), N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
-    plot_ellipse(sensor_covs_CI[0], ax, "Covariance Intersection", alpha_val=1, color_def='purple')
-
-    #Ellipsoidal Intersection Fusion
-    ellip_worked = True
-    try:
-        sensor_mus_Ellip, sensor_covs_Ellip, KL_div_Ellip, determinants_Ellip = ellipsoidalIntersection(np.copy(sensor_mus), np.copy(sensor_covs), N_time_steps, neighbors, N_agents, KL_inputs, P_centralized, calculate_KL=calculate_KL_guard, calculate_det=calculate_covariance_det)
-        print(sensor_covs_Ellip[0])
-        plot_ellipse(sensor_covs_Ellip[0], ax, "Ellipsoidal Intersection", alpha_val=1, color_def='green')
-    except:
-        ellip_worked = False
-        print("Ellipsoidal Convergence Failed")
-
-    plt.legend(loc='upper left', borderaxespad=0.)
-    plt.grid(b = True)
-    plt.title("Covariance Ellipses")
-    plt.savefig("visualizations/Covariance Ellipses.png")
-    plt.show()
 
 
-    output_data = []
-    output_data.append(["Centralized Fusion", np.linalg.det(fused_cov), "NA", fused_mu])
-    Q = multivariate_normal(sensor_mus_CI[0], sensor_covs_CI[0])
-    output_data.append(["Covariance Intersection", np.linalg.det(sensor_covs_CI[0]), compute_KL(P_centralized, Q, KL_inputs), sensor_mus_CI[0]])
-    if(ellip_worked):
-        Q = multivariate_normal(sensor_mus_Ellip[0], sensor_covs_Ellip[0])
-        output_data.append(["Ellipsoidal Intersection", np.linalg.det(sensor_covs_Ellip[0]), compute_KL(P_centralized, Q, KL_inputs), sensor_mus_Ellip[0]])
-    print_all_data(output_data, sensor_covs)
+x = np.linspace(0, a+1, a+1)
+for i in dets:
+    ax.plot(x, dets[i], label="Node " + str(i + 1))
 
-
-
-
-    if(calculate_KL_guard):    
-        ax = plt.axes()
-        for i in range(N_agents):
-            kl = KL_div_CI[i]
-            ax.plot(X_axis, kl, label="Sensor " + str(i + 1))
-
-        plt.ylabel("KL Divergence")
-        plt.xlabel("Time Steps")
-        plt.title("KL Divergence CI Progression")
-        plt.legend(loc='upper left', borderaxespad=0.)
-        plt.grid(b = True)
-        plt.savefig("KL_Divergence_CI.png")
-        plt.show()
-        
-        ax = plt.axes()
-        for i in range(N_agents):
-            kl = KL_div_Ellip[i]
-            ax.plot(X_axis, kl, label="Sensor " + str(i + 1))
-
-        plt.ylabel("KL Divergence")
-        plt.xlabel("Time Steps")
-        plt.title("KL Divergence Ellipsoidal Intersection Progression")
-        plt.legend(loc='upper left', borderaxespad=0.)
-        plt.grid(b = True)
-        plt.savefig("visualizations/KL_Divergence_Ellipse.png")
-        plt.show()
-
-    if(calculate_covariance_det):
-        ax = plt.axes()
-        X_axis = [i for i in range(1, min(len(determinants_CI[0]), 50) + 1)]
-        for i in range(N_agents):
-            deter = determinants_CI[i][:min(len(determinants_CI[i]), 50)]
-            ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
-
-        plt.ylabel("Determinant of Covariance Matrix")
-        plt.xlabel("Time Steps")
-        plt.title("Covariance Progression CI")
-        plt.legend(loc='upper left', borderaxespad=0.)
-        plt.grid(b = True)
-        plt.savefig("visualizations/Covariance_Progression_CI.png")
-        plt.show()
-
-        if(ellip_worked):
-            ax = plt.axes()
-            X_axis = [i for i in range(1, min(len(determinants_Ellip[0]), 50) + 1)]
-            for i in range(N_agents):
-                deter = determinants_Ellip[i][:min(len(determinants_Ellip[i]), 50)]
-                ax.plot(X_axis, deter, label = "Sensor " + str(i + 1))
-
-            plt.ylabel("Determinant of Covariance Matrix")
-            plt.xlabel("Time Steps")
-            plt.title("Covariance Progression EI")
-            plt.legend(loc='upper left', borderaxespad=0.)
-            plt.grid(b = True)
-            plt.savefig("visualizations/Covariance_Progression_EI.png")
-            plt.show()
-
-
-
-
-print(sensor_mus[6])
-print(sensor_mus[5])
-
-ei = EllipsoidalIntersection()
-C_c = ei.mutual_covariance(sensor_covs[5], sensor_covs[6]) + 1e-1*np.identity(2)
-print("============================")
-perform_fusion(sensor_mus[5], sensor_mus[6], np.copy(sensor_covs[5]), np.copy(sensor_covs[6]), C_c)
+ax.legend()
+plt.xlabel("Timestep")
+plt.ylabel("Determinant")
+plt.show()

@@ -1,7 +1,40 @@
 from tqdm import tqdm
-def run_sim(trials):
+import numpy as np
+from scipy.stats import invwishart as iw        
+import matplotlib.pyplot as plt
+
+def inv(A):
+    return np.linalg.inv(A)
+
+def calculate_MSE(true_x_fus, C_a, C_b, C_c, x_a, x_b, C_fus):
+    C_ac_inv = inv(C_a) - inv(C_c)
+    C_ac = inv(C_ac_inv)
+    C_bc_inv = inv(C_b) - inv(C_c)
+    C_bc = inv(C_bc_inv)
+    C_c_inv = inv(C_c)
+    
+    
+    C_abc_inv_inv = inv(C_ac_inv + C_bc_inv)
+    
+    
+    x_c = (C_abc_inv_inv @ (C_ac_inv @ x_a.T + C_bc_inv @ x_b.T)).T
+    x_ac = (C_ac @ (inv(C_a) @ x_a.T - C_c_inv @ x_c.T)).T
+    x_bc =(C_bc @ (inv(C_b) @ x_b.T - C_c_inv @ x_c.T)).T
+    
+    x_fus = C_fus @ (C_ac_inv @ x_ac.T + C_bc_inv @ x_bc.T + C_c_inv @ x_c.T)
+    
+    mse = (np.square(true_x_fus - x_fus)).mean()
+    return mse
+    
+    
+
+def run_sim(trials, df):
     EI = []
-    PC = []
+    ei_mse = []
+    PC_10 = []
+    PC_10_mse = []
+    PC_05 = []
+    PC_05_mse = []
     for i in tqdm(range(trials)):
         import warnings
         warnings.filterwarnings("ignore")
@@ -16,21 +49,21 @@ def run_sim(trials):
 
         debug= False
 
-        def generate_covariance(true_mu, dims):
-            S = np.tril(np.random.randn(dims, dims))
+        def generate_covariance(true_mu, dims, df):
+            S = (np.tril(iw.rvs(df, 1, size=dims**2).reshape(dims, dims)))*df
             cov = np.dot(S, S.T)
-            while(np.linalg.det(cov) < 0.5):
-                cov = cov * 2
+            while(abs(np.linalg.det(cov)) < 1.5):
+                cov = cov + 0.5*np.diag(np.diag(cov))
             mu = np.random.multivariate_normal(true_mu, cov, 1)[0]
 
             return mu, cov
 
-        def get(dims):
+        def get(dims, df):
             true_mu = np.zeros((dims, ))
 
-            x_ac, C_ac = generate_covariance(true_mu, dims)
-            x_c, C_c = generate_covariance(true_mu, dims)
-            x_bc, C_bc = generate_covariance(true_mu, dims)
+            x_ac, C_ac = generate_covariance(true_mu, dims, df)
+            x_c, C_c = generate_covariance(true_mu, dims, df)
+            x_bc, C_bc = generate_covariance(true_mu, dims, df)
 
             C_a = LA.inv(LA.inv(C_ac) + LA.inv(C_c))
             C_b = LA.inv(LA.inv(C_bc) + LA.inv(C_c))
@@ -39,8 +72,10 @@ def run_sim(trials):
             x_b = C_b @ (LA.inv(C_bc) @ x_bc + LA.inv(C_c) @ x_c)
 
             C_fus = LA.inv(LA.inv(C_a) + LA.inv(C_b) - LA.inv(C_c))
+            
+            x_fus = C_fus @ (LA.inv(C_ac) @ x_ac + LA.inv(C_bc) @ x_bc + LA.inv(C_c) @ x_c)
 
-            return x_a.reshape(1, dims), x_b.reshape(1, dims), C_a, C_b, C_fus
+            return x_a.reshape(1, dims), x_b.reshape(1, dims), C_a, C_b, C_fus, x_fus
 
         def plot_ellipse(covariance, ax, label_t="", linestyle='', alpha_val=0.25, color_def='red', center = [0, 0]):
             if covariance.shape[0] == 2:
@@ -67,7 +102,8 @@ def run_sim(trials):
             D_gamma = np.diag(np.clip(D_b, a_min=1.0, a_max=None))   # eqn. 11b in Sijs et al.
             return np.dot(np.dot(np.dot(np.dot(np.dot(np.dot(S_a, D_a_sqrt), S_b), D_gamma), inv(S_b)), D_a_sqrt), inv(S_a))  # eqn. 11a in Sijs et al
 
-        x_a, x_b, C_a, C_b, C_fus = get(2)
+        x_a, x_b, C_a, C_b, C_fus, t_x_fus = get(2, df)
+        
 
         x_a = x_a.reshape(1, 2)
         x_b = x_b.reshape(1, 2)
@@ -104,7 +140,10 @@ def run_sim(trials):
             A[np.where(A<=1e-5)] = 1e-5
 
         def relu(v):
-            return np.log1p(1 + np.exp(v))
+            if v < 100:
+                return np.log1p(1 + np.exp(v))
+            else:
+                return v
 
 
 
@@ -142,7 +181,7 @@ def run_sim(trials):
         con6 = {'type': 'eq', 'fun': constraint5}
         cons = [con1, con2, con3, con4, con5, con6]
 
-        S_0 = 0.1*(np.linalg.cholesky(inv(mutual_covariance(C_a, C_b))).T).reshape(4, )
+        S_0 = 0.4*(np.linalg.cholesky(inv(mutual_covariance(C_a, C_b))).T).reshape(4, )
         prob_constraint(S_0)
 
         if(debug):
@@ -161,7 +200,7 @@ def run_sim(trials):
         S = sol.x
         S = S.reshape(2, 2).T
 
-        C_c = inv(S.T) @ inv(S)
+        C_c_05 = inv(S.T) @ inv(S)
         if(debug):
             print ('objective is',objective(sol.x))
             print ('constraint1 is ',constraint1(sol.x))
@@ -172,16 +211,42 @@ def run_sim(trials):
             print ('prob_constraint is ',prob_constraint(sol.x))
 
 
-        fus_PC = inv(inv(C_a) + inv(C_b) - inv(C_c))
-        fus_EI = inv(inv(C_a) + inv(C_b) - inv(mutual_covariance(C_a, C_b)))
-        # print("OURS:" + str(LA.det(fus_PC)))
-        # print("EI:" + str(LA.det(fus_EI)))
-        # print("TRUE:" + str(LA.det(C_fus)))
+        fus_PC_05 = inv(inv(C_a) + inv(C_b) - inv(C_c_05))
+        C_c_EI = mutual_covariance(C_a, C_b) + 1e-10*np.identity(2)
+        fus_EI = inv(inv(C_a) + inv(C_b) - inv(C_c_EI))
+        
+        ei = calculate_MSE(t_x_fus, C_a, C_b, C_c_EI, x_a, x_b, fus_EI)
+        
+        pc_05 = calculate_MSE(t_x_fus, C_a, C_b, C_c_05, x_a, x_b, fus_PC_05)
+        
+        
+        eta = get_critical_value(2, 0.01)
+        
+        sol = minimize(objective, S_0, method='trust-constr', constraints=cons)
+        S = sol.x.reshape(2, 2).T
+        C_c_10 = inv(S.T) @ inv(S)
+        fus_PC_10 = inv(inv(C_a) + inv(C_b) - inv(C_c_10))
+        pc_10 = calculate_MSE(t_x_fus, C_a, C_b, C_c_10, x_a, x_b, fus_PC_10)
+    
+        
+        #Updating lists
         EI.append(LA.det(fus_EI))
-        PC.append(LA.det(fus_PC))
+        ei_mse.append(ei)
+        PC_05.append(LA.det(fus_PC_05))
+        PC_05_mse.append(pc_05)
+        PC_10.append(LA.det(fus_PC_10))
+        PC_10_mse.append(pc_10)
     
-    print("OURS:", sum(PC)/len(PC))
-    print("EI:", sum(EI)/len(EI))
-    
-run_sim(25)
-    
+    print("DF:", df)    
+    print("OURS .05 determinant:", sum(PC_05)/len(PC_05))
+    print("OURS .01 determinant:", sum(PC_10)/len(PC_10))
+    print("EI determinant:", sum(EI)/len(EI))
+    print("===============================")
+    print("OURS .05 MSE:", sum(PC_05_mse)/len(PC_05_mse))
+    print("OURS .01 MSE:", sum(PC_10_mse)/len(PC_10_mse))
+    print("EI MSE:", sum(ei_mse)/len(ei_mse))
+    return (sum(PC_05)/len(PC_05), sum(PC_10)/len(PC_10), sum(EI)/len(EI)), (sum(PC_05_mse)/len(PC_05_mse), sum(PC_10_mse)/len(PC_10_mse), sum(ei_mse)/len(ei_mse))
+
+df_s = [2, 30, 100]
+for df in df_s:
+    det, mse = run_sim(30, df)

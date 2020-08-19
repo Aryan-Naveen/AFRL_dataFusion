@@ -103,6 +103,10 @@ def run_sim(trials, df):
             return np.dot(np.dot(np.dot(np.dot(np.dot(np.dot(S_a, D_a_sqrt), S_b), D_gamma), inv(S_b)), D_a_sqrt), inv(S_a))  # eqn. 11a in Sijs et al
 
         x_a, x_b, C_a, C_b, C_fus, t_x_fus = get(2, df)
+        ax = plt.axes()
+        plot_ellipse(C_a, ax, alpha_val=1, color_def="orange", linestyle="dashed")
+        plot_ellipse(C_b, ax, alpha_val=1, color_def="blue", linestyle="dashed")
+        plt.show()
         
 
         x_a = x_a.reshape(1, 2)
@@ -118,6 +122,9 @@ def run_sim(trials, df):
 
         def objective(S):
             return -(S[0]*S[3])
+            # S = S.reshape(2, 2).T
+            # C_c = inv(S @ S.T)
+            # return np.trace(C_c)
 
         def constraint1(S):
             S = S.reshape(2, 2).T
@@ -247,6 +254,6 @@ def run_sim(trials, df):
     print("EI MSE:", sum(ei_mse)/len(ei_mse))
     return (sum(PC_05)/len(PC_05), sum(PC_10)/len(PC_10), sum(EI)/len(EI)), (sum(PC_05_mse)/len(PC_05_mse), sum(PC_10_mse)/len(PC_10_mse), sum(ei_mse)/len(ei_mse))
 
-df_s = [2, 30, 100]
+df_s = [100]
 for df in df_s:
-    det, mse = run_sim(30, df)
+    det, mse = run_sim(1, df)

@@ -47,7 +47,7 @@ def run_sim(trials, df):
         import matplotlib.pyplot as plt
         import math
 
-        debug= False
+        debug= True
 
         def generate_covariance(true_mu, dims, df):
             S = (np.tril(iw.rvs(df, 1, size=dims**2).reshape(dims, dims)))*df
@@ -102,20 +102,8 @@ def run_sim(trials, df):
             D_gamma = np.diag(np.clip(D_b, a_min=1.0, a_max=None))   # eqn. 11b in Sijs et al.
             return np.dot(np.dot(np.dot(np.dot(np.dot(np.dot(S_a, D_a_sqrt), S_b), D_gamma), inv(S_b)), D_a_sqrt), inv(S_a))  # eqn. 11a in Sijs et al
 
-        x_a, x_b, C_a, C_b, C_fus, t_x_fus = get(2, df)
-        ax = plt.axes()
-        plot_ellipse(C_a, ax, alpha_val=1, color_def="orange", linestyle="dashed")
-        plot_ellipse(C_b, ax, alpha_val=1, color_def="blue", linestyle="dashed")
-        plt.show()
-        
-
-        x_a = x_a.reshape(1, 2)
-        x_b = x_b.reshape(1, 2)
-
         def get_critical_value(dimensions, alpha):
             return chi2.ppf((1 - alpha), df=dimensions)
-
-        eta = get_critical_value(2, 0.05)
 
         def inv(mat):
             return np.linalg.inv(mat)
@@ -147,8 +135,9 @@ def run_sim(trials, df):
             A[np.where(A<=1e-5)] = 1e-5
 
         def relu(v):
-            if v < 100:
-                return np.log1p(1 + np.exp(v))
+            threshold = 1E-5
+            if v < 100 and v > threshold:
+                return np.log1p(1 + np.exp(v))* threshold /np.log1p(1+np.exp(threshold))
             else:
                 return v
 
@@ -180,6 +169,20 @@ def run_sim(trials, df):
         def constraint5(S):
             return round(S[2], 10)
 
+        #inside each loop, first create the input distributions
+
+        x_a, x_b, C_a, C_b, C_fus, t_x_fus = get(2, df)
+        # ax = plt.axes()
+        # plot_ellipse(C_a, ax, alpha_val=1, color_def="orange", linestyle="dashed")
+        # plot_ellipse(C_b, ax, alpha_val=1, color_def="blue", linestyle="dashed")
+        # plt.show()
+        
+
+        x_a = x_a.reshape(1, 2)
+        x_b = x_b.reshape(1, 2)
+
+        ## Now setup the constraints
+
         con1 = {'type': 'ineq', 'fun': constraint1}
         con2 = {'type': 'ineq', 'fun': constraint2}
         con3 = {'type': 'ineq', 'fun': constraint3}
@@ -188,11 +191,17 @@ def run_sim(trials, df):
         con6 = {'type': 'eq', 'fun': constraint5}
         cons = [con1, con2, con3, con4, con5, con6]
 
+        eta = get_critical_value(2, 0.05)
+        print('eta1 is ',eta)
+
+        #Find an initialization point
         S_0 = 0.4*(np.linalg.cholesky(inv(mutual_covariance(C_a, C_b))).T).reshape(4, )
         prob_constraint(S_0)
 
         if(debug):
             print('Before optimization, we have...')
+            print('C_a\n',C_a)
+            print('C_b\n',C_b)
             print ('objective is',objective(S_0))
             print ('constraint1 is ',constraint1(S_0))
             print ('constraint2 is ',constraint2(S_0))
@@ -201,7 +210,7 @@ def run_sim(trials, df):
             print ('constraint5 is ',constraint5(S_0))
             print ('prob_constraint is ',prob_constraint(S_0))
 
-
+        # Run the optimization
         sol = minimize(objective, S_0, method='trust-constr', constraints=cons)
         # print(sol)
         S = sol.x
@@ -209,6 +218,8 @@ def run_sim(trials, df):
 
         C_c_05 = inv(S.T) @ inv(S)
         if(debug):
+            print ('for .05, after optimization we have...')
+            print('C_c_05',C_c_05)
             print ('objective is',objective(sol.x))
             print ('constraint1 is ',constraint1(sol.x))
             print ('constraint2 is ',constraint2(sol.x))
@@ -228,15 +239,34 @@ def run_sim(trials, df):
         
         
         eta = get_critical_value(2, 0.01)
-        
+        print('eta2 is ',eta)
+        #Run the optimization for a different user-selected threshold
         sol = minimize(objective, S_0, method='trust-constr', constraints=cons)
         S = sol.x.reshape(2, 2).T
         C_c_10 = inv(S.T) @ inv(S)
         fus_PC_10 = inv(inv(C_a) + inv(C_b) - inv(C_c_10))
         pc_10 = calculate_MSE(t_x_fus, C_a, C_b, C_c_10, x_a, x_b, fus_PC_10)
-    
+
+        if(debug):
+            print ('for .05, after optimization we have...')
+            print('C_c_10',C_c_10)
+            print ('objective is',objective(sol.x))
+            print ('constraint1 is ',constraint1(sol.x))
+            print ('constraint2 is ',constraint2(sol.x))
+            print ('constraint3 is ',constraint3(sol.x))
+            print ('constraint4 is ',constraint4(sol.x))
+            print ('constraint5 is ',constraint5(sol.x))
+            print ('prob_constraint is ',prob_constraint(sol.x))
+
+
+        ax = plt.axes()
+        plot_ellipse(fus_EI, ax, alpha_val=1, color_def="orange", linestyle="dashed")
+        plot_ellipse(fus_PC_10, ax, alpha_val=.5, color_def="blue", linestyle="dashed")
+        plot_ellipse(fus_PC_05, ax, alpha_val=.5, color_def="red", linestyle="dashed")
+        ax.legend(['Optimal','PC=.01','PC=.05'])
+        plt.show()
         
-        #Updating lists
+        #Store results for later analysis
         EI.append(LA.det(fus_EI))
         ei_mse.append(ei)
         PC_05.append(LA.det(fus_PC_05))

@@ -139,7 +139,7 @@ def run_sim(trials, df):
             if v < 100 and v > threshold:
                 return np.log1p(1 + np.exp(v))* threshold /np.log1p(1+np.exp(threshold))
             else:
-                return v
+                return threshold
 
 
 
@@ -187,7 +187,7 @@ def run_sim(trials, df):
         con2 = {'type': 'ineq', 'fun': constraint2}
         con3 = {'type': 'ineq', 'fun': constraint3}
         con4 = {'type': 'ineq', 'fun': constraint4}
-        con5 = {'type': 'ineq', 'fun': prob_constraint}
+        con5 = {'type': 'eq', 'fun': prob_constraint}
         con6 = {'type': 'eq', 'fun': constraint5}
         cons = [con1, con2, con3, con4, con5, con6]
 

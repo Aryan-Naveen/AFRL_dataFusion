@@ -136,10 +136,10 @@ def run_sim(trials, df):
 
         def relu(v):
             threshold = 1E-5
-            if v < 100 and v > threshold:
+            if v < 100:
                 return np.log1p(1 + np.exp(v))* threshold /np.log1p(1+np.exp(threshold))
             else:
-                return threshold
+                return v
 
 
 
